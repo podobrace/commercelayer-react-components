@@ -1,7 +1,7 @@
 {
-  "name": "@commercelayer/react-components",
+  "name": "@podobrace/commercelayer-react-components",
   "version": "4.5.1",
-  "description": "The Official Commerce Layer React Components",
+  "description": "A fork of the Commercelayer React components.",
   "main": "lib/cjs/index.js",
   "module": "lib/esm/index.js",
   "types": "lib/esm/index.d.ts",
@@ -140,7 +140,7 @@
     }
   },
   "publishConfig": {
-    "access": "public"
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "lint": "eslint src",
@@ -157,7 +157,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/commercelayer/commercelayer-react-components.git"
+    "url": "git+https://github.com/podobrace/podobrace-commercelayer-react-components.git"
   },
   "keywords": [
     "reactjs",
@@ -174,9 +174,9 @@
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/commercelayer/commercelayer-react-components/issues"
+    "url": "https://github.com/podobrace/podobrace-commercelayer-react-components/issues"
   },
-  "homepage": "https://github.com/commercelayer/commercelayer-react-components#readme",
+  "homepage": "https://github.com/podobrace/podobrace-commercelayer-react-components#readme",
   "dependencies": {
     "@ac-dev/countries-service": "^1.2.0",
     "@ac-dev/states-service": "^1.1.1",

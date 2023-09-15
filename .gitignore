@@ -82,6 +82,9 @@ web_modules/
 # Output of 'npm pack'
 *.tgz
 
+# NPM settings with possible secrets
+.npmrc
+
 # Yarn Integrity file
 .yarn-integrity
 
