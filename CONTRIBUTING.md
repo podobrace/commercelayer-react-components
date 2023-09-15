@@ -25,5 +25,6 @@ If you have created the PAT, copy it. Then, make a copy of the `.npmrc.example` 
 You should now be able to publish new versions of the components by first updating the version in `packages/react-components/package.json`, committing your changes and then running:
 
 ```
+pnpm components build
 pnpm components publish
 ```
