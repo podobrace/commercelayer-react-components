@@ -1,3 +1,6 @@
+
+> For instruction about working with this resository, see [the contributing docs](./CONTRIBUTING.md).
+
 # Commerce Layer React Components
 
 A collection of reusable React components that makes it super fast and simple to build your own custom commerce UI, leveraging [Commerce Layer API](https://docs.commercelayer.io/api/).
