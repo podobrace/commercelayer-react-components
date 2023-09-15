@@ -154,11 +154,13 @@ interface TSetPlaceOrderParams {
   order?: Order
   state?: PlaceOrderState
   setOrderErrors?: (errors: BaseError[]) => void
-  paymentSource?: PaymentSourceType & {
-    approval_url?: string
-    cancel_url?: string
-    return_url?: string
-  }
+  paymentSource?:
+    | null
+    | (PaymentSourceType & {
+        approval_url?: string | null
+        cancel_url?: string | null
+        return_url?: string | null
+      })
   include?: string[]
   setOrder?: (order: Order) => void
 }
