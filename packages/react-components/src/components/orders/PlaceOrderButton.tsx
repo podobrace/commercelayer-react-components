@@ -113,6 +113,18 @@ export function PlaceOrderButton(props: Props): JSX.Element {
       void handleClick()
     }
   }, [options?.paypalPayerId, paymentType])
+
+  useEffect(() => {
+    if (
+      paymentType === 'external_payments' &&
+      options?.mspAuthorized &&
+      order?.status &&
+      ['draft', 'pending'].includes(order?.status)
+    ) {
+      void handleClick()
+    }
+  }, [options?.mspAuthorized, paymentType])
+
   useEffect(() => {
     if (
       paymentType === 'stripe_payments' &&

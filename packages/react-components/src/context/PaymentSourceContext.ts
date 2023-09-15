@@ -10,6 +10,7 @@ export type IconBrand =
   | 'maestro'
   | 'cirrus'
   | 'paypal'
+  | 'ideal'
 
 interface DefaultContext {
   brand?: IconBrand | string

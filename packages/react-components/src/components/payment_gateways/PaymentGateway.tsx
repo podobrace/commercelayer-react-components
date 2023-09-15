@@ -20,6 +20,7 @@ import {
   getStripeAttributes
 } from '#utils/getPaymentAttributes'
 import ExternalGateway from './ExternalGateway'
+import MultisafepayGateway from './MultisafepayGateway'
 
 export type GatewayBaseType = Props & {
   show: boolean
@@ -136,8 +137,20 @@ export function PaymentGateway({
       return (
         <CheckoutComGateway {...gatewayConfig}>{children}</CheckoutComGateway>
       )
-    case 'external_payments':
+    case 'external_payments': {
+      if (
+        order?.payment_method?.reference_origin?.toUpperCase() ===
+        'MULTISAFEPAY'
+      ) {
+        return (
+          <MultisafepayGateway {...gatewayConfig}>
+            {children}
+          </MultisafepayGateway>
+        )
+      }
+
       return <ExternalGateway {...gatewayConfig}>{children}</ExternalGateway>
+    }
     case 'klarna_payments':
       return <KlarnaGateway {...gatewayConfig}>{children}</KlarnaGateway>
     case 'stripe_payments':

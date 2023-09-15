@@ -16,6 +16,7 @@ import {
 } from '#utils/customerOrderOptions'
 import getSdk from '#utils/getSdk'
 import getErrors from '#utils/getErrors'
+import axios from 'axios'
 
 export type PlaceOrderActionType =
   | 'setErrors'
@@ -35,6 +36,7 @@ export interface PlaceOrderOptions {
   stripe?: {
     redirectStatus: string
   }
+  mspAuthorized?: boolean
 }
 
 export interface PlaceOrderActionPayload {
@@ -114,11 +116,21 @@ export function placeOrderPermitted({
     const shipment = shipments && shipmentsFilled(shipments)
     const paymentMethod = order.payment_method
     const paymentSource = order.payment_source
+    if (
+      order.total_amount_with_taxes_cents !== 0 &&
+      isEmpty(paymentMethod?.id)
+    ) {
+      isPermitted = false
+    }
     if (order.total_amount_with_taxes_cents !== 0 && isEmpty(paymentMethod?.id))
       isPermitted = false
     if (isEmpty(billingAddress)) isPermitted = false
     if (isEmpty(shippingAddress) && !doNotShip) isPermitted = false
     if (!isEmpty(shipments) && !shipment) isPermitted = false
+    // @ts-expect-error no type
+    if (paymentSource?.mismatched_amounts) {
+      isPermitted = false
+    }
     // @ts-expect-error no type
     if (paymentSource?.mismatched_amounts) isPermitted = false
     dispatch({
@@ -142,7 +154,11 @@ interface TSetPlaceOrderParams {
   order?: Order
   state?: PlaceOrderState
   setOrderErrors?: (errors: BaseError[]) => void
-  paymentSource?: PaymentSourceType
+  paymentSource?: PaymentSourceType & {
+    approval_url?: string
+    cancel_url?: string
+    return_url?: string
+  }
   include?: string[]
   setOrder?: (order: Order) => void
 }
@@ -167,6 +183,26 @@ export async function setPlaceOrder({
     const sdk = getSdk(config)
     const { options, paymentType } = state
     try {
+      const isMultisafepay =
+        order.payment_method?.reference_origin?.toUpperCase() === 'MULTISAFEPAY'
+      if (
+        paymentType === 'external_payments' &&
+        isMultisafepay &&
+        !options?.mspAuthorized
+      ) {
+        const mspResponse = await axios({
+          url: '/api/multisafepay/create-order',
+          method: 'POST',
+          data: { order },
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json'
+          }
+        })
+        window.location.href = mspResponse.data.mspUrl
+        return response
+      }
+
       if (
         paymentType === 'paypal_payments' &&
         paymentSource?.type === 'paypal_payments'

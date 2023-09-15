@@ -3,6 +3,7 @@ import { type BraintreeConfig } from '#components/payment_source/BraintreePaymen
 import { type PaypalConfig } from '#components/payment_source/PaypalPayment'
 import { type StripeConfig } from '#components/payment_source/StripePayment'
 import { type WireTransferConfig } from '#components/payment_source/WireTransferPayment'
+import { type MultisafepayConfig } from '#components/payment_source/MultisafepayPayment'
 import { type CommerceLayerConfig } from '#context/CommerceLayerContext'
 import { type getOrderContext, type updateOrder } from '#reducers/OrderReducer'
 import type { BaseError } from '#typings/errors'
@@ -55,6 +56,9 @@ export interface PaymentSourceObject {
   }
   external_payments: ExternalPayment & {
     payment_source_token?: string
+    approval_url?: string
+    cancel_url?: string
+    return_url?: string
   }
   paypal_payments: PaypalPayment
   stripe_payments: StripePayment & {
@@ -194,6 +198,7 @@ export type PaymentResourceKey =
   | 'paypalPayment'
   | 'adyenPayment'
   | 'checkoutComPayment'
+  | 'multisafepayPayment'
 
 export type SDKPaymentResource =
   | 'AdyenPayment'
@@ -425,6 +430,7 @@ export interface PaymentMethodConfig {
   paypalPayment?: PaypalConfig
   stripePayment?: StripeConfig
   wireTransfer?: Partial<WireTransferConfig>
+  multisafepayPayment?: MultisafepayConfig
 }
 
 type SetPaymentMethodConfig = (
