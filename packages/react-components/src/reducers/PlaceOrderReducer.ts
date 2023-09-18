@@ -105,10 +105,7 @@ export function placeOrderPermitted({
   options
 }: TPlaceOrderPermittedParams): void {
   if (order && config) {
-    let isPermitted = true
-    if (order.privacy_url && order.terms_url) {
-      isPermitted = localStorage.getItem('privacy-terms') === 'true'
-    }
+    let isPermitted = localStorage.getItem('privacy-terms') === 'true'
     const billingAddress = order.billing_address
     const shippingAddress = order.shipping_address
     const doNotShip = isDoNotShip(order.line_items)

@@ -29,7 +29,6 @@ export function PrivacyAndTermsCheckbox(
     <BaseInput
       type='checkbox'
       name={fieldName}
-      disabled={forceDisabled}
       onChange={handleChange}
       checked={checked}
       {...props}
