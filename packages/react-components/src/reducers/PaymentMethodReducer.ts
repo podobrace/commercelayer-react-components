@@ -290,7 +290,7 @@ export async function setPaymentSource({
   config,
   dispatch,
   getOrder,
-  attributes,
+  attributes = {},
   order,
   paymentResource,
   customerPaymentSourceId,
@@ -302,6 +302,9 @@ export async function setPaymentSource({
     if (config && order) {
       let paymentSource: PaymentSourceType
       const sdk = getSdk(config)
+      if (paymentResource === 'external_payments') {
+        attributes['payment_source_token'] = 'aaa.bbb.ccc'
+      }
       if (!customerPaymentSourceId) {
         if (!paymentSourceId) {
           const attrs: any = {
