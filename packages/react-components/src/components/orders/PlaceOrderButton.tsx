@@ -68,7 +68,6 @@ export function PlaceOrderButton(props: Props): JSX.Element {
   } = useContext(PaymentMethodContext)
   const { order } = useContext(OrderContext)
   const isFree = order?.total_amount_with_taxes_cents === 0
-  console.log({ isPermitted, notPermitted })
   useEffect(() => {
     if (loading) setNotPermitted(loading)
     else {
@@ -77,7 +76,9 @@ export function PlaceOrderButton(props: Props): JSX.Element {
           customerPayment: { payment_source: paymentSource },
           paymentType
         })
-        if (
+        if (currentPaymentMethodType === 'external_payments' && isPermitted) {
+          setNotPermitted(false)
+        } else if (
           ((isFree && isPermitted) ||
             currentPaymentMethodRef?.current?.onsubmit ||
             card.brand) &&
