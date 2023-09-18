@@ -8,6 +8,9 @@ export function PrivacyAndTermsCheckbox(
 ): JSX.Element {
   const { order } = useContext(OrderContext)
   const { placeOrderPermitted } = useContext(PlaceOrderContext)
+
+  // @TODO: PXI-799 - Disable privacy policy when order doesn't contain
+  // `terms_url` or `privacy_url`
   const [, setForceDisabled] = useState(true)
   const [checked, setChecked] = useState(false)
   const fieldName = 'privacy-terms'
