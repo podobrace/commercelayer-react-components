@@ -5,6 +5,7 @@ import { type ChildrenFunction } from '#typings/index'
 
 interface ChildrenProps extends Omit<Props, 'children'> {
   labelName: string
+  imagePath?: string
 }
 
 interface Props extends Omit<JSX.IntrinsicElements['label'], 'children'> {
@@ -20,6 +21,7 @@ export function PaymentMethodName(props: Props): JSX.Element {
   })
   let labelName = payment?.name
   let htmlFor = payment?.payment_source_type
+  const imagePath: string | undefined = payment?.metadata?.['image_path']
   const paymentGateway = payment?.payment_gateway
 
   if (
@@ -94,6 +96,7 @@ export function PaymentMethodName(props: Props): JSX.Element {
   const parentProps = {
     htmlFor,
     labelName,
+    imagePath,
     paymentGateway,
     ...props
   }
