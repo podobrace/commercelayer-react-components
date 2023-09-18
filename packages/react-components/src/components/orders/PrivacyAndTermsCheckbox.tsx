@@ -8,7 +8,7 @@ export function PrivacyAndTermsCheckbox(
 ): JSX.Element {
   const { order } = useContext(OrderContext)
   const { placeOrderPermitted } = useContext(PlaceOrderContext)
-  const [forceDisabled, setForceDisabled] = useState(true)
+  const [, setForceDisabled] = useState(true)
   const [checked, setChecked] = useState(false)
   const fieldName = 'privacy-terms'
   const handleChange: any = (e: React.ChangeEvent<HTMLInputElement>): void => {
