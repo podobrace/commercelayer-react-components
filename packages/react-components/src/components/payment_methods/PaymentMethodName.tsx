@@ -90,6 +90,9 @@ export function PaymentMethodName(props: Props): JSX.Element {
       case 'VVVGIFTCARD':
         labelName = 'VVV Cadeaubon'
         break
+
+      case 'PRZELEWY':
+        labelName = 'Przelewy24'
     }
   }
 
