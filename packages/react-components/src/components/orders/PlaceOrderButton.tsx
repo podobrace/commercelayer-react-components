@@ -68,6 +68,7 @@ export function PlaceOrderButton(props: Props): JSX.Element {
   } = useContext(PaymentMethodContext)
   const { order } = useContext(OrderContext)
   const isFree = order?.total_amount_with_taxes_cents === 0
+  console.log({ isPermitted, notPermitted })
   useEffect(() => {
     if (loading) setNotPermitted(loading)
     else {

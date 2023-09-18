@@ -125,11 +125,18 @@ export function placeOrderPermitted({
     if (isEmpty(shippingAddress) && !doNotShip) isPermitted = false
     if (!isEmpty(shipments) && !shipment) isPermitted = false
     // @ts-expect-error no type
-    if (paymentSource?.mismatched_amounts) {
-      isPermitted = false
-    }
-    // @ts-expect-error no type
     if (paymentSource?.mismatched_amounts) isPermitted = false
+
+    console.log(
+      { isPermitted },
+      !isEmpty(shipments) && !shipment,
+      order.total_amount_with_taxes_cents !== 0 && isEmpty(paymentMethod?.id),
+      order.total_amount_with_taxes_cents !== 0 && isEmpty(paymentMethod?.id),
+      isEmpty(billingAddress),
+      isEmpty(shippingAddress) && !doNotShip,
+      !isEmpty(shipments) && !shipment
+    )
+
     dispatch({
       type: 'setPlaceOrderPermitted',
       payload: {
