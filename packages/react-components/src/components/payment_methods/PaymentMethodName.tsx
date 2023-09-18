@@ -18,9 +18,79 @@ export function PaymentMethodName(props: Props): JSX.Element {
     currentComponentName: 'PaymentMethodName',
     key: 'payment'
   })
-  const labelName = payment?.name
-  const htmlFor = payment?.payment_source_type
+  let labelName = payment?.name
+  let htmlFor = payment?.payment_source_type
   const paymentGateway = payment?.payment_gateway
+
+  if (
+    payment?.payment_source_type === 'external_payments' &&
+    payment?.reference
+  ) {
+    htmlFor = payment.reference
+
+    switch (payment.reference) {
+      case 'AFTERPAY':
+        labelName = 'Afterpay'
+        break
+
+      case 'APPLEPAY':
+        labelName = 'Apple Pay'
+        break
+
+      case 'BANKTRANS':
+        labelName = 'Bank Transfer'
+        break
+
+      case 'BELFIUS':
+        labelName = 'Belfius'
+        break
+
+      case 'CBC':
+        labelName = 'CBC'
+        break
+
+      case 'CREDITCARD':
+        labelName = 'Credit Card'
+        break
+
+      case 'DIRECTBANK':
+        labelName = 'Wire Transfer'
+        break
+
+      case 'DOTPAY':
+        labelName = 'Dotpay'
+        break
+
+      case 'GOOGLEPAY':
+        labelName = 'Google Pay'
+        break
+
+      case 'IDEAL':
+        labelName = 'iDEAL'
+        break
+
+      case 'IDEALQR':
+        labelName = 'iDeal'
+        break
+
+      case 'KBC':
+        labelName = 'KBC'
+        break
+
+      case 'MISTERCASH':
+        labelName = 'Mister Cash'
+        break
+
+      case 'TRUSTLY':
+        labelName = 'Trustly'
+        break
+
+      case 'VVVGIFTCARD':
+        labelName = 'VVV Cadeaubon'
+        break
+    }
+  }
+
   const parentProps = {
     htmlFor,
     labelName,
