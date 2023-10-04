@@ -10,12 +10,14 @@
     "build": "pnpm -r build",
     "prepare": "husky install",
     "test": "pnpm -r test",
+    "docs:dev": "pnpm --filter docs storybook",
+    "docs:build": "pnpm --filter docs build-storybook",
     "components": "pnpm --filter \"@podobrace/commercelayer-react-components\""
   },
   "devDependencies": {
-    "@commercelayer/eslint-config-ts-react": "^1.0.0",
+    "@commercelayer/eslint-config-ts-react": "^1.1.0",
     "husky": "^8.0.0",
-    "lerna": "^6.6.2",
-    "typescript": "^5.0.4"
+    "lerna": "^7.2.0",
+    "typescript": "^5.2.2"
   }
 }
