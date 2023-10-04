@@ -26,6 +26,7 @@ export default function MultisafepayGateway(props: Props): JSX.Element | null {
   if (readonly || showCard) {
     const card = getCardDetails({
       customerPayment: {
+        // @ts-expect-error missing type - added because it is also added by default by CL
         payment_source: order?.payment_source || paymentSource
       },
       paymentType: paymentResource
