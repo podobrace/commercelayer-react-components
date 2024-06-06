@@ -1,5 +1,5 @@
 {
-  "name": "@commercelayer/react-components",
+  "name": "@podobrace/commercelayer-react-components",
   "version": "0.0.9",
   "description": "The Official Commerce Layer React Components",
   "main": "lib/cjs/index.js",
