@@ -23,6 +23,7 @@ type Props = {
 export function ShippingMethodRadioButton(props: Props): JSX.Element {
   const { onChange, ...p } = props
   const [checked, setChecked] = useState(false)
+  const [disabled, setDisabled] = useState(false)
   const { shippingMethod, currentShippingMethodId, shipmentId } = useContext(
     ShippingMethodChildrenContext
   )
@@ -40,9 +41,9 @@ export function ShippingMethodRadioButton(props: Props): JSX.Element {
   }, [currentShippingMethodId, shippingMethodId])
 
   const handleOnChange = async (): Promise<void> => {
+    setDisabled(true)
     if (shipmentId) {
       if (shippingMethodId && setShippingMethod != null) {
-        setChecked(true)
         const { order } = await setShippingMethod(shipmentId, shippingMethodId)
         if (shippingMethod && onChange != null)
           onChange({
@@ -52,6 +53,7 @@ export function ShippingMethodRadioButton(props: Props): JSX.Element {
           })
       }
     }
+    setDisabled(false)
   }
   const parentProps = {
     shippingMethod,
@@ -59,16 +61,19 @@ export function ShippingMethodRadioButton(props: Props): JSX.Element {
     handleOnChange,
     name,
     id,
+    disabled,
     ...props
   }
   return props.children ? (
     <Parent {...parentProps}>{props.children}</Parent>
   ) : (
     <input
+      disabled={disabled}
       type='radio'
       name={name}
       id={id}
       onChange={(e) => {
+        e.preventDefault()
         e.stopPropagation()
         void handleOnChange()
       }}

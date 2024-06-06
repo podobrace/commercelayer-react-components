@@ -11,22 +11,22 @@ type ApplicationTypeProps<T extends ApplicationType = ApplicationType> =
         returnUrl?: string
       }
     : T extends 'identity'
-    ? {
-        applicationType: T
-        orderId?: string
-        modeType: 'login' | 'signup'
-        clientId: string
-        scope: string
-        returnUrl: string
-      }
-    : {
-        applicationType: Omit<T, 'my-account' | 'identity'>
-        orderId: string
-        modeType?: 'login' | 'signup'
-        clientId?: string
-        scope?: string
-        returnUrl?: string
-      }
+      ? {
+          applicationType: T
+          orderId?: string
+          modeType: 'login' | 'signup'
+          clientId: string
+          scope: string
+          returnUrl: string
+        }
+      : {
+          applicationType: Omit<T, 'my-account' | 'identity'>
+          orderId: string
+          modeType?: 'login' | 'signup'
+          clientId?: string
+          scope?: string
+          returnUrl?: string
+        }
 
 interface TArgs {
   accessToken: string
@@ -57,7 +57,8 @@ export function getApplicationLink({
   const r = returnUrl ? `&returnUrl=${returnUrl}` : ''
   const params = applicationType === 'identity' ? `${c}${s}${r}` : ''
   const domainName = customDomain ?? `${slug}.${env}commercelayer.app`
-  return `https://${domainName}/${applicationType.toString()}/${
+  const application = customDomain ? '' : `/${applicationType.toString()}`
+  return `https://${domainName}${application}/${
     orderId ?? t ?? ''
   }?accessToken=${accessToken}${params}`
 }

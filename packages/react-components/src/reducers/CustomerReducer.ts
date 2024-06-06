@@ -7,17 +7,22 @@ import type {
   AddressUpdate,
   Customer,
   CustomerPaymentSource,
+  ListResponse,
   Order,
   OrderSubscription,
-  OrderUpdate
+  OrderUpdate,
+  QueryPageSize
 } from '@commercelayer/sdk'
 import { type CommerceLayerConfig } from '#context/CommerceLayerContext'
 import { type updateOrder } from './OrderReducer'
 import getSdk from '#utils/getSdk'
 import getErrors from '#utils/getErrors'
-import jwtDecode from '#utils/jwt'
-import { type ListResponse } from '@commercelayer/sdk/lib/cjs/resource'
+import { jwt } from '#utils/jwt'
 import { getCustomerIdByToken } from '#utils/getCustomerIdByToken'
+import {
+  type TriggerAttributeHelper,
+  triggerAttributeHelper
+} from '#utils/triggerAttributeHelper'
 
 export type CustomerActionType =
   | 'setErrors'
@@ -34,7 +39,7 @@ export interface CustomerActionPayload {
   customerEmail: string
   errors: BaseError[]
   orders: ListResponse<Order>
-  subscriptions: ListResponse<OrderSubscription> | null
+  subscriptions: ListResponse<OrderSubscription> | ListResponse<Order> | null
   isGuest: boolean
   customers: Customer
 }
@@ -236,10 +241,11 @@ export function getCustomerPaymentSources(
 ): void {
   if (params) {
     const { order, dispatch } = params
-    if (order?.available_customer_payment_sources && dispatch) {
+    const payments = order?.available_customer_payment_sources
+    if (payments != null && payments.length > 0 && dispatch) {
       dispatch({
         type: 'setPayments',
-        payload: { payments: order.available_customer_payment_sources }
+        payload: { payments }
       })
     }
   }
@@ -257,11 +263,15 @@ interface GetCustomerOrdersProps {
   /**
    * The page size
    */
-  pageSize?: number
+  pageSize?: QueryPageSize
   /**
    * The page number
    */
   pageNumber?: number
+  /**
+   * Retrieve a specific subscription or order by id
+   */
+  id?: string
 }
 
 export async function getCustomerOrders({
@@ -271,7 +281,7 @@ export async function getCustomerOrders({
   pageNumber = 1
 }: GetCustomerOrdersProps): Promise<void> {
   if (config.accessToken) {
-    const { owner } = jwtDecode(config.accessToken)
+    const { owner } = jwt(config.accessToken)
     if (owner?.id) {
       const sdk = getSdk(config)
       const orders = await sdk.customers.orders(owner.id, {
@@ -288,23 +298,40 @@ export async function getCustomerOrders({
 }
 
 export async function getCustomerSubscriptions({
+  id,
   config,
   dispatch,
   pageSize = 10,
   pageNumber = 1
 }: GetCustomerOrdersProps): Promise<void> {
   if (config.accessToken) {
-    const { owner } = jwtDecode(config.accessToken)
+    const { owner } = jwt(config.accessToken)
     if (owner?.id) {
       const sdk = getSdk(config)
-      const subscriptions = await sdk.customers.order_subscriptions(owner.id, {
-        pageSize,
-        pageNumber
-      })
-      dispatch({
-        type: 'setSubscriptions',
-        payload: { subscriptions }
-      })
+      if (id != null) {
+        const subscriptions = await sdk.customers.orders(owner.id, {
+          filters: { order_subscription_id_eq: id },
+          include: ['authorizations'],
+          pageSize,
+          pageNumber
+        })
+        dispatch({
+          type: 'setSubscriptions',
+          payload: { subscriptions }
+        })
+      } else {
+        const subscriptions = await sdk.customers.order_subscriptions(
+          owner.id,
+          {
+            pageSize,
+            pageNumber
+          }
+        )
+        dispatch({
+          type: 'setSubscriptions',
+          payload: { subscriptions }
+        })
+      }
     }
   }
 }
@@ -385,19 +412,26 @@ interface GetCustomerPaymentsParams extends GetCustomerOrdersProps {}
 
 export async function getCustomerPayments({
   config,
-  dispatch
+  dispatch,
+  pageSize = 10,
+  pageNumber = 1
 }: GetCustomerPaymentsParams): Promise<void> {
-  if (config != null && dispatch != null) {
+  if (config?.accessToken != null && dispatch != null) {
     const sdk = getSdk(config)
-    const payments = await sdk.customer_payment_sources.list({
-      include: ['payment_source']
-    })
-    dispatch({
-      type: 'setPayments',
-      payload: {
-        payments
-      }
-    })
+    const { owner } = jwt(config.accessToken)
+    if (owner?.id) {
+      const payments = await sdk.customer_payment_sources.list({
+        include: ['payment_source'],
+        pageNumber,
+        pageSize
+      })
+      dispatch({
+        type: 'setPayments',
+        payload: {
+          payments
+        }
+      })
+    }
   }
 }
 
@@ -410,14 +444,92 @@ export async function getCustomerInfo({
     const customerId = getCustomerIdByToken(config.accessToken)
     if (customerId) {
       const customers = await sdk.customers.retrieve(customerId)
+      const customerEmail = customers.email
       dispatch({
         type: 'setCustomers',
         payload: {
-          customers
+          customers,
+          customerEmail
         }
       })
     }
   }
+}
+
+export type SetResourceTriggerParams = {
+  /**
+   * The CommerceLayer config
+   */
+  config?: CommerceLayerConfig
+  /**
+   * The dispatch function
+   */
+  dispatch?: Dispatch<CustomerAction>
+  /**
+   * The page size
+   */
+  pageSize?: QueryPageSize
+  /**
+   * The page number
+   */
+  pageNumber?: number
+  /**
+   *  Reload the list of orders or subscriptions if the trigger is successful. Default: false
+   */
+  reloadList?: boolean
+} & TriggerAttributeHelper
+
+/**
+ * Helper to trigger and activate an attribute on a resource
+ */
+export async function setResourceTrigger({
+  config,
+  dispatch,
+  resource,
+  attribute,
+  id,
+  pageSize = 10,
+  pageNumber = 1,
+  reloadList = false
+}: SetResourceTriggerParams): Promise<boolean> {
+  if (config.accessToken) {
+    const { owner } = jwt(config.accessToken)
+    if (owner?.id) {
+      const params = {
+        config,
+        resource,
+        attribute,
+        id
+      }
+      const response = await triggerAttributeHelper(
+        params as TriggerAttributeHelper
+      )
+      if (response != null && dispatch != null && reloadList) {
+        switch (resource) {
+          case 'orders':
+            await getCustomerOrders({
+              config,
+              dispatch,
+              pageSize,
+              pageNumber
+            })
+            break
+          case 'order_subscriptions':
+            await getCustomerSubscriptions({
+              config,
+              dispatch,
+              pageSize,
+              pageNumber
+            })
+            break
+          default:
+            return false
+        }
+        return true
+      }
+    }
+  }
+  return false
 }
 
 export const customerInitialState: CustomerState = {

@@ -12,7 +12,9 @@ import customerReducer, {
   saveCustomerUser,
   getCustomerPayments,
   getCustomerSubscriptions,
-  getCustomerInfo
+  getCustomerInfo,
+  type SetResourceTriggerParams,
+  setResourceTrigger
 } from '#reducers/CustomerReducer'
 import OrderContext from '#context/OrderContext'
 import CommerceLayerContext from '#context/CommerceLayerContext'
@@ -20,6 +22,7 @@ import CustomerContext from '#context/CustomerContext'
 import type { BaseError } from '#typings/errors'
 import type { DefaultChildrenType } from '#typings/globals'
 import { isGuestToken } from '#utils/isGuestToken'
+import { type QueryPageSize } from '@commercelayer/sdk'
 
 interface Props {
   children: DefaultChildrenType
@@ -30,7 +33,25 @@ interface Props {
 }
 
 /**
- * The CustomerContainer component manages the customer state.
+ * Main container for the Customers components.
+ * It stores - in its context - the details of an active customer, if present.
+ *
+ * It also accept a `isGuest` prop to define if no customer is currently set as active.
+ *
+ * <span title='Requirements' type='warning'>
+ * Must be a child of the `<CommerceLayer>` component.
+ * </span>
+ * <span title='Children' type='info'>
+ * `<CustomerField>`,
+ * `<CustomerInput>`,
+ * `<SaveCustomerButton>`,
+ * `<AddressesContainer>`,
+ * `<AddressesEmpty>`,
+ * `<CustomerPaymentSource>`,
+ * `<CustomerPaymentSourceEmpty>`,
+ * `<PaymentMethodsContainer>`,
+ * `<OrdersList>`
+ * </span>
  */
 export function CustomerContainer(props: Props): JSX.Element {
   const { children, isGuest } = props
@@ -55,14 +76,18 @@ export function CustomerContainer(props: Props): JSX.Element {
         !include?.includes('available_customer_payment_sources.payment_source')
       ) {
         addResourceToInclude({
-          newResource: 'available_customer_payment_sources.payment_source'
+          newResource: [
+            'available_customer_payment_sources.payment_source',
+            'available_customer_payment_sources.payment_method'
+          ]
         })
       } else if (
         !includeLoaded?.['available_customer_payment_sources.payment_source']
       ) {
         addResourceToInclude({
           newResourceLoaded: {
-            'available_customer_payment_sources.payment_source': true
+            'available_customer_payment_sources.payment_source': true,
+            'available_customer_payment_sources.payment_method': true
           }
         })
       }
@@ -143,6 +168,16 @@ export function CustomerContainer(props: Props): JSX.Element {
           addresses: state.addresses
         })
       },
+      setResourceTrigger: async (
+        props: Omit<SetResourceTriggerParams, 'dispatch' | 'config'>
+      ): Promise<boolean> => {
+        // @ts-expect-error strange type error
+        return await setResourceTrigger({
+          ...props,
+          dispatch,
+          config
+        })
+      },
       createCustomerAddress: async (address: TCustomerAddress) => {
         await createCustomerAddress({ address, config, dispatch, state })
       },
@@ -151,13 +186,30 @@ export function CustomerContainer(props: Props): JSX.Element {
         pageSize
       }: {
         pageNumber?: number
-        pageSize?: number
+        pageSize?: QueryPageSize
       }) => {
         await getCustomerOrders({
           config,
           dispatch,
           pageNumber,
           pageSize
+        })
+      },
+      getCustomerSubscriptions: async ({
+        pageNumber,
+        pageSize,
+        id
+      }: {
+        pageNumber?: number
+        pageSize?: QueryPageSize
+        id?: string
+      }) => {
+        await getCustomerSubscriptions({
+          config,
+          dispatch,
+          pageNumber,
+          pageSize,
+          id
         })
       }
     }

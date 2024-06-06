@@ -130,7 +130,7 @@ export function BraintreePayment({
     hostedFieldsInstance,
     threeDSInstance
   }: SubmitProps): Promise<boolean> => {
-    const savePaymentSourceToCustomerWallet =
+    const savePaymentSourceToCustomerWallet: string =
       // @ts-expect-error no type
       event?.elements?.save_payment_source_to_customer_wallet?.checked
     if (savePaymentSourceToCustomerWallet)
@@ -169,7 +169,7 @@ export function BraintreePayment({
           verifyCardOptions
         )) as any
         if (
-          response.rawCardinalSDKVerificationData.Validated &&
+          response.threeDSecureInfo.status === 'authenticate_successful' &&
           paymentSource
         ) {
           paymentSource &&
@@ -255,13 +255,14 @@ export function BraintreePayment({
                     ])
                   }
                   if (ref.current) {
-                    ref.current.onsubmit = async (paymentSource: any) =>
-                      await handleSubmitForm({
+                    ref.current.onsubmit = async (paymentSource: any) => {
+                      return await handleSubmitForm({
                         event: ref.current as any,
                         hostedFieldsInstance,
                         threeDSInstance,
                         paymentSource
                       })
+                    }
                     setPaymentRef({ ref })
                   }
                 }

@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useMemo, useState } from 'react'
 import BaseSelect from '#components/utils/BaseSelect'
 import {
   type AddressStateSelectName,
@@ -7,8 +7,11 @@ import {
 import BillingAddressFormContext from '#context/BillingAddressFormContext'
 import ShippingAddressFormContext from '#context/ShippingAddressFormContext'
 import isEmpty from 'lodash/isEmpty'
-import { getStateOfCountry, isValidState } from '#utils/countryStateCity'
-import isEmptyStates from '#utils/isEmptyStates'
+import {
+  getStateOfCountry,
+  isValidState,
+  type States
+} from '#utils/countryStateCity'
 import AddressesContext from '#context/AddressContext'
 import BaseInput from '#components/utils/BaseInput'
 import CustomerAddressFormContext from '#context/CustomerAddressFormContext'
@@ -19,8 +22,32 @@ type Props = Omit<BaseSelectComponentProps, 'options' | 'name'> & {
   disabled?: boolean
   inputClassName?: string
   selectClassName?: string
+  /**
+   * Optional states list to extend the default one.
+   * This component will try to render a select getting as options the states found for the selected country.
+   * If the country has no states, it will render a text input field instead.
+   */
+  states?: States
 } & Pick<JSX.IntrinsicElements['select'], 'className' | 'id' | 'style'>
 
+/**
+ * The AddressInput component creates a form `select` related to the `state_code` attribute of the `address` object.
+ *
+ * It requires a `name` prop to define the field name associated with the select and accepts most of HTML `select` tag standard props.
+ *
+ * <span title="Name prop" type="info">
+ * The `name` prop must respect the convention of mentioning one of the available addresses forms (`billing_address` or `shipping_address`) concatenated to the `state_code` address attribute with a `_` separator. Eg.: `billing_address_state_code`.
+ * </span>
+ *
+ * <span title="Requirement" type="warning">
+ * It must to be used inside either the `<BillingAddressForm>` or the `<ShippingAddressForm>` component.
+ * </span>
+ *
+ * <span title="Fields" type="info">
+ * Check the `addresses` resource from our [Core API documentation](https://docs.commercelayer.io/core/v/api-reference/addresses/object)
+ * for more details about the available attributes to render.
+ * </span>
+ */
 export function AddressStateSelector(props: Props): JSX.Element {
   const {
     required = true,
@@ -29,6 +56,7 @@ export function AddressStateSelector(props: Props): JSX.Element {
     className = '',
     inputClassName = '',
     selectClassName = '',
+    states,
     ...p
   } = props
   const billingAddress = useContext(BillingAddressFormContext)
@@ -37,7 +65,23 @@ export function AddressStateSelector(props: Props): JSX.Element {
   const { errors: addressErrors } = useContext(AddressesContext)
   const [hasError, setHasError] = useState(false)
   const [countryCode, setCountryCode] = useState('')
-  const [val, setVal] = useState(value || '')
+  const [val, setVal] = useState(value ?? '')
+
+  const stateOptions = useMemo(() => {
+    if (isEmpty(countryCode)) {
+      return []
+    }
+    return getStateOfCountry({
+      countryCode,
+      states
+    })
+  }, [states, countryCode])
+
+  const isEmptyStates = useMemo(
+    () => () => isEmpty(stateOptions),
+    [stateOptions]
+  )
+
   useEffect(() => {
     const billingCountryCode =
       typeof billingAddress?.values?.billing_address_country_code === 'string'
@@ -57,10 +101,25 @@ export function AddressStateSelector(props: Props): JSX.Element {
       countryCode !== billingCountryCode
     ].every(Boolean)
     if (
+      !changeBillingCountry &&
+      value != null &&
+      value !== '' &&
+      value !== val
+    ) {
+      if (billingAddress.setValue != null) {
+        billingAddress?.setValue(name, value)
+      }
+      setVal(value)
+    }
+    if (
       changeBillingCountry &&
       billingCountryCode &&
-      !isValidState(val, billingCountryCode) &&
-      !isEmptyStates(billingCountryCode)
+      !isValidState({
+        stateCode: val ?? '',
+        countryCode: billingCountryCode,
+        states
+      }) &&
+      !isEmptyStates()
     ) {
       if (billingAddress.resetField) billingAddress?.resetField(name)
       setVal('')
@@ -71,10 +130,25 @@ export function AddressStateSelector(props: Props): JSX.Element {
       countryCode !== shippingCountryCode
     ].every(Boolean)
     if (
+      !changeShippingCountry &&
+      value != null &&
+      value !== '' &&
+      value !== val
+    ) {
+      if (shippingAddress.setValue != null) {
+        shippingAddress?.setValue(name, value)
+      }
+      setVal(value)
+    }
+    if (
       changeShippingCountry &&
       shippingCountryCode &&
-      !isValidState(val, shippingCountryCode) &&
-      !isEmptyStates(shippingCountryCode)
+      !isValidState({
+        stateCode: val ?? '',
+        countryCode: shippingCountryCode,
+        states
+      }) &&
+      !isEmptyStates()
     ) {
       if (shippingAddress.resetField) shippingAddress?.resetField(name)
       setVal('')
@@ -97,16 +171,23 @@ export function AddressStateSelector(props: Props): JSX.Element {
     return () => {
       setHasError(false)
     }
-  }, [value, billingAddress, shippingAddress, addressErrors, customerAddress])
+  }, [
+    value,
+    billingAddress?.values?.billing_address_country_code,
+    shippingAddress?.values?.shipping_address_country_code,
+    addressErrors,
+    customerAddress
+  ])
   const errorClassName =
     billingAddress?.errorClassName ||
     shippingAddress?.errorClassName ||
     customerAddress?.errorClassName ||
     ''
-  const classNameComputed = !isEmptyStates(countryCode)
+  const classNameComputed = !isEmptyStates()
     ? `${className} ${selectClassName} ${hasError ? errorClassName : ''}`
     : `${className} ${inputClassName} ${hasError ? errorClassName : ''}`
-  return !isEmptyStates(countryCode) ? (
+
+  return !isEmptyStates() ? (
     <BaseSelect
       {...p}
       className={classNameComputed}
@@ -116,7 +197,7 @@ export function AddressStateSelector(props: Props): JSX.Element {
         customerAddress?.validation
       }
       required={required}
-      options={getStateOfCountry(countryCode)}
+      options={stateOptions}
       name={name}
       value={val}
     />

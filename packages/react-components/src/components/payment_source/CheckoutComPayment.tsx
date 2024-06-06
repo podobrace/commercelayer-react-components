@@ -106,7 +106,7 @@ export function CheckoutComPayment({
     ...divProps
   } = p
   const handleSubmit = async (): Promise<boolean> => {
-    const savePaymentSourceToCustomerWallet =
+    const savePaymentSourceToCustomerWallet: string =
       // @ts-expect-error no type
       ref?.current?.elements?.save_payment_source_to_customer_wallet?.checked
     if (savePaymentSourceToCustomerWallet) {
@@ -175,7 +175,9 @@ export function CheckoutComPayment({
           }}
           cardValidationChanged={(e) => {
             if (e.isValid && ref.current) {
-              ref.current.onsubmit = async () => await handleSubmit()
+              ref.current.onsubmit = async () => {
+                return await handleSubmit()
+              }
               setPaymentRef({ ref })
             }
           }}

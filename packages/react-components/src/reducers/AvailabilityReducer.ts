@@ -56,19 +56,26 @@ export const availabilityInitialState: AvailabilityState = {}
 
 export async function getAvailability({
   skuCode,
+  skuId,
   dispatch,
   config
 }: {
-  skuCode: string
+  skuCode?: string
+  skuId?: string
   dispatch: Dispatch<AvailabilityAction>
   config: CommerceLayerConfig
 }): Promise<void> {
   const sdk = getSdk(config)
   try {
-    const [sku] = await sdk.skus.list({
-      fields: { skus: ['id'] },
-      filters: { code_in: skuCode }
-    })
+    const [sku] =
+      skuId != null
+        ? [{ id: skuId }]
+        : skuCode != null
+          ? await sdk.skus.list({
+              fields: { skus: ['id'] },
+              filters: { code_in: skuCode }
+            })
+          : []
     if (sku) {
       const skuInventory = (await sdk.skus.retrieve(sku.id, {
         fields: { skus: ['inventory'] }

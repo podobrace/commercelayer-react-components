@@ -34,16 +34,27 @@ export function PaymentSource(props: PaymentSourceProps): JSX.Element {
   const { payment, expressPayments } = useContext(PaymentMethodChildrenContext)
   const { order } = useContext(OrderContext)
   const { payments } = useContext(CustomerContext)
-  const { currentPaymentMethodId, paymentSource, destroyPaymentSource } =
-    useContext(PaymentMethodContext)
+  const {
+    currentPaymentMethodId,
+    paymentSource,
+    destroyPaymentSource,
+    currentPaymentMethodType,
+    currentCustomerPaymentSourceId
+  } = useContext(PaymentMethodContext)
   const [show, setShow] = useState(false)
   const [showCard, setShowCard] = useState(false)
 
   useEffect(() => {
+    const isCustomerPaymentSource =
+      currentCustomerPaymentSourceId != null &&
+      currentCustomerPaymentSourceId === paymentSource?.id
     if (readonly) {
       setShow(true)
       setShowCard(true)
-    } else if (payment?.id === currentPaymentMethodId) {
+    } else if (
+      (payment?.id === currentPaymentMethodId || isCustomerPaymentSource) &&
+      !expressPayments
+    ) {
       setShow(true)
       const card = getCardDetails({
         paymentType: payment?.payment_source_type as PaymentResource,
@@ -52,8 +63,20 @@ export function PaymentSource(props: PaymentSourceProps): JSX.Element {
           payment_source: paymentSource
         }
       })
-      if (card.brand) setShowCard(true)
-    } else if (expressPayments) {
+      if (isCustomerPaymentSource && card.brand === '') {
+        // Force creadit card icon for customer payment source imported by API
+        card.brand =
+          card.issuer_type != null && card.issuer_type !== ''
+            ? card.issuer_type
+            : 'credit-card'
+      }
+      if (card.brand) {
+        setShowCard(true)
+      }
+    } else if (
+      expressPayments &&
+      currentPaymentMethodType === 'stripe_payments'
+    ) {
       setShow(true)
     } else setShow(false)
     return () => {
@@ -62,11 +85,12 @@ export function PaymentSource(props: PaymentSourceProps): JSX.Element {
     }
   }, [
     currentPaymentMethodId,
-    paymentSource,
-    payments,
-    payment,
+    paymentSource?.id,
+    payments != null,
+    payment != null,
     readonly,
-    order
+    order?.status,
+    expressPayments
   ])
   const handleEditClick = async (e: MouseEvent): Promise<void> => {
     e.stopPropagation()

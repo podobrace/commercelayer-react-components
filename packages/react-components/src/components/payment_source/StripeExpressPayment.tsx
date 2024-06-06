@@ -262,7 +262,12 @@ export function StripeExpressPayment({
       }
     })
     return (
-      <PaymentRequestButtonElement className='' options={{ paymentRequest }} />
+      <>
+        <PaymentRequestButtonElement
+          className=''
+          options={{ paymentRequest }}
+        />
+      </>
     )
   }
 

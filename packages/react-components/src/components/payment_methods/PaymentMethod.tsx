@@ -2,7 +2,7 @@ import { useState, useEffect, type MouseEvent, useContext } from 'react'
 import PaymentMethodContext from '#context/PaymentMethodContext'
 import PaymentMethodChildrenContext from '#context/PaymentMethodChildrenContext'
 import type { LoaderType } from '#typings'
-import getLoaderComponent from '../../utils/getLoaderComponent'
+import getLoaderComponent from '#utils/getLoaderComponent'
 import type {
   Order,
   PaymentMethod as PaymentMethodType
@@ -18,10 +18,12 @@ import {
 } from '#utils/getPaymentAttributes'
 import { isEmpty } from '#utils/isEmpty'
 import { getAvailableExpressPayments } from '#utils/expressPaymentHelper'
+import PlaceOrderContext from '#context/PlaceOrderContext'
 
-interface TOnClickParams {
+export interface PaymentMethodOnClickParams {
   payment?: PaymentMethodType | Record<string, any>
   order?: Order
+  paymentSource?: Order['payment_source']
 }
 
 type Props = {
@@ -50,7 +52,7 @@ type Props = {
   (
     | {
         clickableContainer: true
-        onClick?: (params?: TOnClickParams) => void
+        onClick?: (params: PaymentMethodOnClickParams) => void
       }
     | {
         clickableContainer?: never
@@ -88,6 +90,7 @@ export function PaymentMethod({
   })
   const { order } = useContext(OrderContext)
   const { getCustomerPaymentSources } = useContext(CustomerContext)
+  const { status } = useContext(PlaceOrderContext)
   useEffect(() => {
     if (paymentMethods != null && !isEmpty(paymentMethods) && expressPayments) {
       const [paymentMethod] = getAvailableExpressPayments(paymentMethods)
@@ -104,7 +107,7 @@ export function PaymentMethod({
             order
           })
           if (ps && paymentMethod && onClick != null) {
-            onClick({ payment: paymentMethod, order })
+            onClick({ payment: paymentMethod, order, paymentSource: ps })
             setTimeout(() => {
               setLoading(false)
             }, 200)
@@ -145,7 +148,7 @@ export function PaymentMethod({
                 attributes
               })
               if (ps && paymentMethod && onClick != null) {
-                onClick({ payment: paymentMethod, order })
+                onClick({ payment: paymentMethod, order, paymentSource: ps })
                 setTimeout(() => {
                   setLoading(false)
                 }, 200)
@@ -210,14 +213,17 @@ export function PaymentMethod({
         ? undefined
         : async (e: MouseEvent<HTMLDivElement>) => {
             e.stopPropagation()
+            const paymentMethodId = payment?.id
+            const currentPaymentMethodId = order?.payment_method?.id
+            if (paymentMethodId === currentPaymentMethodId) return
+            if (status === 'placing') return
             setLoadingPlaceOrder({ loading: true })
             setPaymentSelected(payment.id)
-            const paymentMethodId = payment?.id
-            const { order } = await setPaymentMethod({
+            const { order: updatedOrder } = await setPaymentMethod({
               paymentResource,
               paymentMethodId
             })
-            if (onClick) onClick({ payment, order })
+            if (onClick) onClick({ payment, order: updatedOrder })
             setLoadingPlaceOrder({ loading: false })
           }
       return (

@@ -92,7 +92,7 @@ function StripePaymentForm({
   }: OnSubmitArgs): Promise<boolean> => {
     if (!stripe) return false
 
-    const savePaymentSourceToCustomerWallet =
+    const savePaymentSourceToCustomerWallet: string =
       // @ts-expect-error no type
       event?.elements?.save_payment_source_to_customer_wallet?.checked
     if (savePaymentSourceToCustomerWallet)
@@ -133,7 +133,7 @@ function StripePaymentForm({
             code: 'PAYMENT_INTENT_AUTHENTICATION_FAILURE',
             resource: 'payment_methods',
             field: currentPaymentMethodType,
-            message: error.message as string
+            message: error.message ?? ''
           }
         ])
         return false

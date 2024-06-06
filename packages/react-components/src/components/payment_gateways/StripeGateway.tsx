@@ -12,7 +12,7 @@ import {
 import getCardDetails from '#utils/getCardDetails'
 import { type StripeElementLocale } from '@stripe/stripe-js'
 import isEmpty from 'lodash/isEmpty'
-import React from 'react'
+import { useContext } from 'react'
 import PaymentCardsTemplate from '../utils/PaymentCardsTemplate'
 
 type Props = GatewayBaseType
@@ -30,13 +30,11 @@ export function StripeGateway(props: Props): JSX.Element | null {
     templateCustomerSaveToWallet,
     ...p
   } = props
-  const { order } = React.useContext(OrderContext)
-  const { payment, expressPayments } = React.useContext(
-    PaymentMethodChildrenContext
-  )
-  const { payments, isGuest } = React.useContext(CustomerContext)
+  const { order } = useContext(OrderContext)
+  const { payment, expressPayments } = useContext(PaymentMethodChildrenContext)
+  const { payments, isGuest } = useContext(CustomerContext)
   const { currentPaymentMethodId, config, paymentSource } =
-    React.useContext(PaymentMethodContext)
+    useContext(PaymentMethodContext)
   const paymentResource: PaymentResource = 'stripe_payments'
   const locale = order?.language_code as StripeElementLocale
 
@@ -45,7 +43,6 @@ export function StripeGateway(props: Props): JSX.Element | null {
   const publishableKey = paymentSource?.publishable_key
   // @ts-expect-error no type
   const clientSecret = paymentSource?.client_secret
-  const paymentSourceId = order?.payment_source?.id || paymentSource?.id
   const stripeConfig = config
     ? getPaymentConfig<'stripe_payments'>(paymentResource, config).stripePayment
     : {}
@@ -55,7 +52,6 @@ export function StripeGateway(props: Props): JSX.Element | null {
           return customerPayment.payment_source?.type === paymentResource
         })
       : []
-
   if (readonly || showCard) {
     const card = getCardDetails({
       customerPayment: {
@@ -64,8 +60,19 @@ export function StripeGateway(props: Props): JSX.Element | null {
       },
       paymentType: paymentResource
     })
-    const value = { ...card, showCard, handleEditClick, readonly }
-    return isEmpty(card) ? null : (
+    if (card?.brand === '') {
+      card.brand =
+        // @ts-expect-error missing type
+        paymentSource?.payment_instrument?.issuer_type ?? 'credit-card'
+    }
+    const value = {
+      ...card,
+      showCard,
+      handleEditClick,
+      readonly,
+      paymentSource
+    }
+    return card?.brand == null ? null : (
       <PaymentSourceContext.Provider value={value}>
         {children}
       </PaymentSourceContext.Provider>
@@ -93,7 +100,7 @@ export function StripeGateway(props: Props): JSX.Element | null {
       </>
     )
   }
-  return publishableKey && !loading && paymentSourceId ? (
+  return (
     <StripePayment
       show={show}
       publishableKey={publishableKey}
@@ -102,8 +109,6 @@ export function StripeGateway(props: Props): JSX.Element | null {
       expressPayments={expressPayments}
       {...stripeConfig}
     />
-  ) : (
-    loaderComponent
   )
 }
 

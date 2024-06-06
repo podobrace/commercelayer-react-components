@@ -4,7 +4,8 @@ import { type ChildrenFunction } from '#typings/index'
 import CommerceLayerContext from '#context/CommerceLayerContext'
 import { getApplicationLink } from '#utils/getApplicationLink'
 import { getDomain } from '#utils/getDomain'
-import jwt from '#utils/jwt'
+import { jwt } from '#utils/jwt'
+import { getOrganizationConfig } from '#utils/organization'
 
 interface ChildrenProps extends Omit<Props, 'children'> {
   /**
@@ -32,6 +33,16 @@ interface Props extends Omit<JSX.IntrinsicElements['a'], 'children'> {
   customDomain?: string
 }
 
+/**
+ * This component generates a link to the hosted mfe-my-account application.
+ * In this way you can connect your shop application with our hosted micro-frontend and let your customers manage their account with zero code.
+ *
+ * <span title="Requirement" type="warning">
+ * Must be a child of the `<CustomerContainer>` component. <br />
+ * </span>
+ *
+ * @link https://github.com/commercelayer/mfe-my-account
+ */
 export function MyAccountLink(props: Props): JSX.Element {
   const { label = 'Go to my account', children, customDomain, ...p } = props
   const { accessToken, endpoint } = useContext(CommerceLayerContext)
@@ -55,7 +66,21 @@ export function MyAccountLink(props: Props): JSX.Element {
   function handleClick(
     e: React.MouseEvent<HTMLAnchorElement, MouseEvent>
   ): void {
-    if (disabled) e.preventDefault()
+    e.preventDefault()
+    if (!disabled && accessToken && endpoint) {
+      void getOrganizationConfig({
+        accessToken,
+        endpoint,
+        params: {
+          accessToken
+        }
+      }).then((config) => {
+        if (config?.links?.my_account) {
+          e.preventDefault()
+          location.href = config.links.my_account
+        }
+      })
+    }
   }
   return children ? (
     <Parent {...parentProps}>{children}</Parent>

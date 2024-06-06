@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { useContext, type PropsWithoutRef } from 'react'
 import Parent from '../utils/Parent'
 import OrderContext from '#context/OrderContext'
@@ -22,7 +23,13 @@ interface TAddToCartButton extends Omit<Props, 'children'> {
 
 type BuyNowMode =
   | {
+      /**
+       * Once item has been added, it redirects to the hosted checkout micro-frontend.
+       */
       buyNowMode: true
+      /**
+       * If you have a self-hosted checkout, you can pass the url to redirect to it.
+       */
       checkoutUrl?: string
     }
   | {
@@ -32,12 +39,23 @@ type BuyNowMode =
 
 type THostedCart =
   | {
+      /**
+       * Once item has been added, it redirects to the hosted cart micro-frontend.
+       */
       redirectToHostedCart: true
+      /**
+       * If you have a self-hosted cart, you can pass the url to redirect to it.
+       */
       hostedCartUrl?: string
+      /**
+       * If you have a self-hosted cart, you can pass the protocol to redirect to it.
+       */
+      protocol?: 'http' | 'https'
     }
   | {
       redirectToHostedCart?: false
       hostedCartUrl?: never
+      protocol?: never
     }
 
 type TButton = PropsWithoutRef<
@@ -82,6 +100,26 @@ type Props = {
   BuyNowMode &
   THostedCart
 
+/**
+ * This component adds `line_items` to the cart (aka draft order), see the [how to create a shopping cart](https://docs.commercelayer.io/core/v/how-tos/placing-orders/shopping-cart/create-a-shopping-cart) documentation,
+ * for a general understanding of the process.
+ *
+ * It can be used to add `skus` or `bundle` by receiving `skuCode` or `bundleCode` from props.
+ * When `skuListId` is passed as prop , it will add all the `skus` in the `sku_list` to the cart.
+ *
+ * It's possible to select the quantity of the item to add to cart by passing the `quantity` prop.
+ *
+ * When this component is used inside a `<Skus>` or `<SkuList>` component, it will automatically get the `skuCode` and quantity from the context,
+ * so you don't need to pass it as prop.
+ *
+ * It can automatically redirect to the cart page of the application using the `redirectToHostedCart` prop and optionally a `hostedCartUrl`.
+ *
+ * With a similar logic, you can enable a "Buy Now" experience and automatically redirect the customer to the checkout page using the `buyNowMode` prop and optionally a `checkoutUrl`.
+ *
+ * <span title="Requirement" type="warning">
+ * Must be a child of the `<OrderContainer>` component.
+ * </span>
+ */
 export function AddToCartButton(props: Props): JSX.Element {
   const {
     label = 'Add to cart',
@@ -96,6 +134,7 @@ export function AddToCartButton(props: Props): JSX.Element {
     hostedCartUrl,
     quantity,
     lineItemOption,
+    protocol = 'https',
     ...p
   } = props
   const { accessToken, endpoint } = useCustomContext({
@@ -146,7 +185,9 @@ export function AddToCartButton(props: Props): JSX.Element {
         })
           .then(async (res) => {
             getOrder && orderId && (await getOrder(orderId))
-            publish('open-cart')
+            if (!buyNowMode) {
+              publish('open-cart')
+            }
             return res
           })
           .catch(({ response }) => {
@@ -169,7 +210,7 @@ export function AddToCartButton(props: Props): JSX.Element {
         const { slug, domain } = getDomain(endpoint)
         const orderId = res?.orderId
         if (hostedCartUrl && orderId) {
-          location.href = `https://${hostedCartUrl}/${orderId}?accessToken=${accessToken}`
+          location.href = `${protocol}://${hostedCartUrl}/${orderId}?accessToken=${accessToken}`
         } else if (orderId && slug) {
           location.href = getApplicationLink({
             orderId,
@@ -180,7 +221,6 @@ export function AddToCartButton(props: Props): JSX.Element {
           })
         }
       }
-      publish('open-cart')
       return res
     } else if (url) {
       return await callExternalFunction({
@@ -197,7 +237,9 @@ export function AddToCartButton(props: Props): JSX.Element {
       })
         .then(async (res) => {
           getOrder && orderId && (await getOrder(orderId))
-          publish('open-cart')
+          if (!buyNowMode) {
+            publish('open-cart')
+          }
           return res
         })
         .catch(({ response }) => {

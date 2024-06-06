@@ -1,3 +1,4 @@
+// TODO: Remove lodash
 import isEmpty from 'lodash/isEmpty'
 import isString from 'lodash/isString'
 import without from 'lodash/without'
@@ -34,24 +35,24 @@ export type ValidateValue = <
   val: V,
   name: N,
   type: T,
-  resourceType: B
+  resource: B
 ) => BaseError | Record<string, any>
 
-export const validateValue: ValidateValue = (val, name, type, resourceType) => {
+export const validateValue: ValidateValue = (val, name, type, resource) => {
   if (!val) {
     return {
       field: name,
       code: 'VALIDATION_ERROR',
       message: `${name} - is required`,
-      resourceType
+      resource
     }
   }
   if (type === 'email' && isString(val) && !val.match(EMAIL_PATTERN)) {
     return {
       field: name,
       code: 'VALIDATION_ERROR',
-      message: `${name} - is not valid`,
-      resourceType
+      message: `please enter a valid format`,
+      resource
     }
   }
   return {}
@@ -88,23 +89,17 @@ const validateFormFields: ValidateFormFields = (
   return { errors, values }
 }
 
-export type FieldsExist = (
+export function fieldsExist(
   address: AddressCreate,
-  schema?: AddressField[]
-) => boolean
-
-export const fieldsExist: FieldsExist = (address, schema = addressFields) => {
+  schema: Array<AddressField | string> = addressFields
+): boolean {
   if (!address.business) {
     const required = without(schema, 'line_2', 'company')
-    const validAddress = keys(address).filter((k) =>
-      required.includes(k as any)
-    )
+    const validAddress = keys(address).filter((k) => required.includes(k))
     return required.length > validAddress.length
   } else {
     const required = without(schema, 'first_name', 'last_name', 'line_2')
-    const validAddress = keys(address).filter((k) =>
-      required.includes(k as any)
-    )
+    const validAddress = keys(address).filter((k) => required.includes(k))
     return required.length > validAddress.length
   }
 }

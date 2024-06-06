@@ -31,6 +31,10 @@ interface Props
    */
   label?: string | ReactNode
   /**
+   * The label of the button when it's loading
+   */
+  loadingLabel?: string | ReactNode
+  /**
    * If false, the button doesn't place the order automatically. Default: true
    */
   autoPlaceOrder?: boolean
@@ -49,22 +53,31 @@ export function PlaceOrderButton(props: Props): JSX.Element {
   const {
     children,
     label = 'Place order',
+    loadingLabel = 'Placing...',
     autoPlaceOrder = true,
     disabled,
     onClick,
     ...p
   } = props
-  const { isPermitted, setPlaceOrder, options, paymentType, setButtonRef } =
-    useContext(PlaceOrderContext)
+  const {
+    isPermitted,
+    setPlaceOrder,
+    options,
+    paymentType,
+    setButtonRef,
+    setPlaceOrderStatus
+  } = useContext(PlaceOrderContext)
   const [notPermitted, setNotPermitted] = useState(true)
   const [forceDisable, setForceDisable] = useState(disabled)
+  const [isLoading, setIsLoading] = useState(false)
   const {
     currentPaymentMethodRef,
     loading,
     currentPaymentMethodType,
     paymentSource,
     setPaymentSource,
-    setPaymentMethodErrors
+    setPaymentMethodErrors,
+    currentCustomerPaymentSourceId
   } = useContext(PaymentMethodContext)
   const { order } = useContext(OrderContext)
   const isFree = order?.total_amount_with_taxes_cents === 0
@@ -79,6 +92,15 @@ export function PlaceOrderButton(props: Props): JSX.Element {
           },
           paymentType
         })
+        if (
+          currentCustomerPaymentSourceId != null &&
+          paymentSource?.id === currentCustomerPaymentSourceId &&
+          card.brand === ''
+        ) {
+          // Force creadit card icon for customer payment source imported by API
+          card.brand = 'credit-card'
+        }
+
         if (currentPaymentMethodType === 'external_payments' && isPermitted) {
           setNotPermitted(false)
         } else if (
@@ -164,7 +186,7 @@ export function PlaceOrderButton(props: Props): JSX.Element {
           attributes
         }).then((res) => {
           // @ts-expect-error no type
-          const resultCode = res?.payment_response?.resultCode
+          const resultCode: string = res?.payment_response?.resultCode
           // @ts-expect-error no type
           const errorCode = res?.payment_response?.errorCode
           // @ts-expect-error no type
@@ -198,9 +220,18 @@ export function PlaceOrderButton(props: Props): JSX.Element {
         order?.payment_source?.payment_response?.resultCode === 'Authorised' &&
         // @ts-expect-error no type
         ref?.current?.disabled === false &&
+        currentCustomerPaymentSourceId == null &&
         autoPlaceOrder
       ) {
-        void handleClick()
+        // NOTE: This is a workaround for the case when the user reloads the page after selecting a customer payment source
+        if (
+          // @ts-expect-error no type
+          order?.payment_source?.payment_response?.merchantReference?.includes(
+            order?.number
+          )
+        ) {
+          void handleClick()
+        }
       }
     }
   }, [
@@ -225,12 +256,12 @@ export function PlaceOrderButton(props: Props): JSX.Element {
       setButtonRef(ref)
     }
   }, [ref])
-
   const handleClick = async (
     e?: MouseEvent<HTMLButtonElement>
   ): Promise<void> => {
     e?.preventDefault()
     e?.stopPropagation()
+    setIsLoading(true)
     let isValid = true
     setForceDisable(true)
     const checkPaymentSource = await setPaymentSource({
@@ -269,21 +300,37 @@ export function PlaceOrderButton(props: Props): JSX.Element {
     } else if (card?.brand) {
       isValid = true
     }
+    if (setPlaceOrderStatus != null) {
+      setPlaceOrderStatus({ status: 'placing' })
+    }
     const placed =
       isValid &&
       setPlaceOrder &&
       (checkPaymentSource || isFree) &&
-      (await setPlaceOrder({ paymentSource: checkPaymentSource }))
+      (await setPlaceOrder({
+        paymentSource: checkPaymentSource,
+        currentCustomerPaymentSourceId
+      }))
     setForceDisable(false)
     onClick && placed && onClick(placed)
+    setIsLoading(false)
+    if (setPlaceOrderStatus != null) {
+      setPlaceOrderStatus({ status: 'standby' })
+    }
   }
   const disabledButton = disabled !== undefined ? disabled : notPermitted
+  const labelButton = isLoading
+    ? loadingLabel
+    : isFunction(label)
+      ? label()
+      : label
   const parentProps = {
     ...p,
     label,
     disabled: disabledButton,
     handleClick,
-    ref
+    parentRef: ref,
+    isLoading
   }
   return children ? (
     <Parent {...parentProps}>{children}</Parent>
@@ -297,7 +344,7 @@ export function PlaceOrderButton(props: Props): JSX.Element {
       }}
       {...p}
     >
-      {isFunction(label) ? label() : label}
+      {labelButton}
     </button>
   )
 }

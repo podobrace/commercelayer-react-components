@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { type AdyenPaymentConfig } from '#components/payment_source/AdyenPayment'
 import { type BraintreeConfig } from '#components/payment_source/BraintreePayment'
 import { type PaypalConfig } from '#components/payment_source/PaypalPayment'
@@ -99,6 +100,7 @@ export interface PaymentMethodActionPayload {
   currentPaymentMethodType: PaymentResource
   currentPaymentMethodId: string
   currentPaymentMethodRef: PaymentRef
+  currentCustomerPaymentSourceId: string | null
   config: PaymentMethodConfig
   paymentSource: Order['payment_source'] | null
   loading: boolean
@@ -323,18 +325,31 @@ export async function setPaymentSource({
         if (dispatch) {
           dispatch({
             type: 'setPaymentSource',
-            payload: { paymentSource, errors: [] }
+            payload: {
+              paymentSource,
+              errors: [],
+              currentCustomerPaymentSourceId: null
+            }
           })
         }
         return paymentSource
       } else {
         if (updateOrder != null) {
-          await updateOrder({
+          const { order: orderUpdated } = await updateOrder({
             id: order.id,
             attributes: {
               _customer_payment_source_id: customerPaymentSourceId
             }
           })
+          if (dispatch != null && orderUpdated != null) {
+            dispatch({
+              type: 'setPaymentSource',
+              payload: {
+                paymentSource: orderUpdated.payment_source,
+                currentCustomerPaymentSourceId: orderUpdated.payment_source?.id
+              }
+            })
+          }
         }
       }
     }
@@ -344,8 +359,23 @@ export async function setPaymentSource({
       resource: 'payment_methods',
       field: paymentResource
     })
-    console.error('Set payment source:', errors)
-    if (dispatch) {
+    if (errors != null && errors?.length > 0) {
+      const [error] = errors
+      if (error?.status === '401' && getOrder != null && order != null) {
+        const currentOrder = await getOrder(order?.id)
+        if (
+          currentOrder?.status != null &&
+          !['placed', 'approved'].includes(currentOrder.status)
+        ) {
+          console.error('Set payment source:', errors)
+          setErrors({
+            currentErrors,
+            newErrors: errors,
+            dispatch
+          })
+        }
+      }
+    } else {
       setErrors({
         currentErrors,
         newErrors: errors,

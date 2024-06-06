@@ -1,9 +1,10 @@
-import { useContext } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import Parent from '../utils/Parent'
 import { type ChildrenFunction } from '#typings/index'
 import CommerceLayerContext from '#context/CommerceLayerContext'
 import { getApplicationLink } from '#utils/getApplicationLink'
 import { getDomain } from '#utils/getDomain'
+import { getOrganizationConfig } from '#utils/organization'
 
 interface ChildrenProps extends Omit<Props, 'children'> {
   /**
@@ -43,6 +44,21 @@ interface Props extends Omit<JSX.IntrinsicElements['a'], 'children'> {
   customDomain?: string
 }
 
+/**
+ * This component generates a link to the hosted mfe-identity application.
+ *
+ * In this way you can connect your shop application with our hosted micro-frontend and let your customers manage their account with zero code.
+ *
+ * <span title="Requirement" type="warning">
+ * Must be a child of the `<CommerceLayer>` component.
+ * </span>
+ *
+ * <span title="My Identity" type="info">
+ * The Commerce Layer Identity micro frontend (React) provides you with an application, powered by Commerce Layer APIs, handling customer login and sign-up functionalities
+ * </span>
+ *
+ * @link https://github.com/commercelayer/mfe-identity
+ */
 export function MyIdentityLink(props: Props): JSX.Element {
   const {
     label,
@@ -55,20 +71,40 @@ export function MyIdentityLink(props: Props): JSX.Element {
     ...p
   } = props
   const { accessToken, endpoint } = useContext(CommerceLayerContext)
+  const [href, setHref] = useState<string | undefined>(undefined)
   if (accessToken == null || endpoint == null)
     throw new Error('Cannot use `MyIdentityLink` outside of `CommerceLayer`')
   const { domain, slug } = getDomain(endpoint)
-  const href = getApplicationLink({
-    slug,
-    accessToken,
-    applicationType: 'identity',
-    domain,
-    modeType: type,
-    clientId,
-    scope,
-    returnUrl: returnUrl ?? window.location.href,
-    customDomain
-  })
+  useEffect(() => {
+    void getOrganizationConfig({
+      accessToken,
+      endpoint,
+      params: {
+        accessToken
+      }
+    }).then((config) => {
+      if (config?.links?.identity) {
+        setHref(config.links.identity)
+      } else {
+        const link = getApplicationLink({
+          slug,
+          accessToken,
+          applicationType: 'identity',
+          domain,
+          modeType: type,
+          clientId,
+          scope,
+          returnUrl: returnUrl ?? window.location.href,
+          customDomain
+        })
+        setHref(link)
+      }
+    })
+    return () => {
+      setHref(undefined)
+    }
+  }, [])
+
   const parentProps = {
     label,
     href,

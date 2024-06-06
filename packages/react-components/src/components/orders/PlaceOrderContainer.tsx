@@ -10,7 +10,8 @@ import placeOrderReducer, {
   placeOrderInitialState,
   type PlaceOrderOptions,
   placeOrderPermitted,
-  setButtonRef
+  setButtonRef,
+  setPlaceOrderStatus
 } from '#reducers/PlaceOrderReducer'
 import OrderContext from '#context/OrderContext'
 import CommerceLayerContext from '#context/CommerceLayerContext'
@@ -96,9 +97,13 @@ export function PlaceOrderContainer(props: Props): JSX.Element {
   const contextValue = {
     ...state,
     setPlaceOrder: async ({
-      paymentSource
+      paymentSource,
+      currentCustomerPaymentSourceId
     }: {
       paymentSource?: Parameters<typeof setPlaceOrder>['0']['paymentSource']
+      currentCustomerPaymentSourceId?: Parameters<
+        typeof setPlaceOrder
+      >['0']['currentCustomerPaymentSourceId']
     }) =>
       await setPlaceOrder({
         config,
@@ -107,8 +112,14 @@ export function PlaceOrderContainer(props: Props): JSX.Element {
         setOrderErrors,
         paymentSource,
         include,
-        setOrder
+        setOrder,
+        currentCustomerPaymentSourceId
       }),
+    setPlaceOrderStatus: ({
+      status
+    }: Parameters<typeof setPlaceOrderStatus>[0]) => {
+      setPlaceOrderStatus({ status, dispatch })
+    },
     placeOrderPermitted: () => {
       placeOrderPermitted({
         config,

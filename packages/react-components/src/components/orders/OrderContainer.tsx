@@ -43,6 +43,39 @@ interface Props {
   fetchOrder?: (order: Order) => void
 }
 
+/**
+ * This component is responsible for fetching the order and store it in its context.
+ * It also provides the `fetchOrder` callback that is triggered every time the order is updated (it returns the updated order object as argument).
+ * When the order is not placed yet, its possible to pass the `metadata` and `attributes` props to update the order.
+ *
+ * <span title="Requirement" type="warning">
+ * Must be a child of the `<CommerceLayer>` component. <br />
+ * Can be a child of the `<OrderStorage>` component and receive the `orderId` from it.
+ * </span>
+ *
+ * <span title="Children" type="info">
+ * `<AddToCartButton>`,
+ * `<AdjustmentAmount>`,
+ * `<CartLink>`,
+ * `<CheckoutLink>`,
+ * `<DiscountAmount>`,
+ * `<GiftCardAmount>`,
+ * `<HostedCart>`,
+ * `<OrderNumber>`,
+ * `<PaymentMethodAmount>`,
+ * `<PlaceOrderButton>`,
+ * `<PlaceOrderContainer>`,
+ * `<PrivacyAndTermsCheckbox>`,
+ * `<Shipping Amount>`,
+ * `<SubTotalAmount>`,
+ * `<TaxesAmount>`,
+ * `<TotalAmount>`,
+ * </span>
+ *
+ * <span title="Core API" type="info">
+ * Check the `orders` resource from our [Core API documentation](https://docs.commercelayer.io/core/v/api-reference/orders/object).
+ * </span>
+ */
 export function OrderContainer(props: Props): JSX.Element {
   const { orderId, children, metadata, attributes, fetchOrder } = props
   const [state, dispatch] = useReducer(orderReducer, orderInitialState)
@@ -61,8 +94,7 @@ export function OrderContainer(props: Props): JSX.Element {
     setLocalOrder,
     deleteLocalOrder
   } = useContext(OrderStorageContext)
-  const localOrder = persistKey ? getLocalOrder(persistKey) : orderId
-  const getOrder = async (): Promise<void> => {
+  const getOrder = async (localOrder?: string | null): Promise<void> => {
     const removeOrderPlaced = !!(persistKey && clearWhenPlaced)
     localOrder &&
       (await getApiOrder({
@@ -76,9 +108,10 @@ export function OrderContainer(props: Props): JSX.Element {
       }))
   }
   useEffect(() => {
+    const localOrder = persistKey ? getLocalOrder(persistKey) : orderId
     if (state?.orderId) {
       if (localOrder != null && state.orderId !== localOrder) {
-        void getOrder()
+        void getOrder(localOrder)
       } else {
         dispatch({
           type: 'setOrderId',
@@ -132,6 +165,7 @@ export function OrderContainer(props: Props): JSX.Element {
     }
   }, [attributes, state?.order, lock])
   useEffect(() => {
+    const localOrder = persistKey ? getLocalOrder(persistKey) : orderId
     const startRequest = Object.keys(state?.includeLoaded || {}).filter(
       (key) => state?.includeLoaded?.[key as ResourceIncluded] === true
     )
@@ -143,13 +177,13 @@ export function OrderContainer(props: Props): JSX.Element {
         !state.withoutIncludes &&
         !lockOrder
       ) {
-        void getOrder()
+        void getOrder(localOrder)
       } else if (
         state.withoutIncludes &&
         !state.include?.length &&
         startRequest.length === 0
       ) {
-        void getOrder()
+        void getOrder(localOrder)
       }
     } else if (
       [

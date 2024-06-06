@@ -1,11 +1,11 @@
-import { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useMemo } from 'react'
 import BaseSelect from '../utils/BaseSelect'
 import { type BaseSelectComponentProps } from '#typings'
 import BillingAddressFormContext, {
   type AddressValuesKeys
 } from '#context/BillingAddressFormContext'
 import ShippingAddressFormContext from '#context/ShippingAddressFormContext'
-import { getCountries } from '#utils/countryStateCity'
+import { getCountries, type Country } from '#utils/countryStateCity'
 import CustomerAddressFormContext from '#context/CustomerAddressFormContext'
 
 type TCountryFieldName =
@@ -19,14 +19,35 @@ interface Props
   name: Extract<AddressValuesKeys, TCountryFieldName>
   required?: boolean
   disabled?: boolean
+  /**
+   * Optional country list to override default ones.
+   */
+  countries?: Country[]
 }
 
+/**
+ * The AddressInput component creates a form `select` related to the `country_code` attribute of the `address` object.
+ *
+ * It requires a `name` prop to define the field name associated with the select and accepts most of HTML `select` tag standard props.
+ *
+ * <span title="Name prop" type="info">
+ * The `name` prop must respect the convention of mentioning one of the available addresses forms (`billing_address` or `shipping_address` or `customer_address`) concatenated to the `country_code` address attribute with a `_` separator. Eg.: `billing_address_country_code`.
+ * </span>
+ *
+ * <span title="Requirement" type="warning">
+ * It must to be used inside either the `<BillingAddressForm>` or the `<ShippingAddressForm>` component.
+ * </span>
+ *
+ * <span title="Fields" type="info">
+ * Check the `addresses` resource from our [Core API documentation](https://docs.commercelayer.io/core/v/api-reference/addresses/object)
+ * for more details about the available attributes to render.
+ * </span>
+ */
 export function AddressCountrySelector(props: Props): JSX.Element {
-  const { required = true, value, name, className, ...p } = props
+  const { required = true, value, name, className, countries, ...p } = props
   const billingAddress = useContext(BillingAddressFormContext)
   const shippingAddress = useContext(ShippingAddressFormContext)
   const customerAddress = useContext(CustomerAddressFormContext)
-  const [hasError, setHasError] = useState(false)
   useEffect(() => {
     if (value && billingAddress?.setValue) {
       billingAddress.setValue(name, value)
@@ -37,24 +58,19 @@ export function AddressCountrySelector(props: Props): JSX.Element {
     if (value && customerAddress?.setValue) {
       customerAddress.setValue(name, value)
     }
+  }, [value])
 
-    if (billingAddress.errors && billingAddress?.errors?.[name]?.error) {
-      setHasError(true)
+  const hasError = useMemo(() => {
+    if (billingAddress?.errors?.[name]?.error) {
+      return true
     }
-    if (billingAddress?.errors?.[name] && hasError) setHasError(false)
-    if (customerAddress.errors && customerAddress?.errors?.[name]?.error) {
-      setHasError(true)
+    if (shippingAddress?.errors?.[name]?.error) {
+      return true
     }
-    if (customerAddress?.errors?.[name] && hasError) setHasError(false)
-
-    if (shippingAddress.errors && shippingAddress?.errors?.[name]?.error) {
-      setHasError(true)
+    if (customerAddress?.errors?.[name]?.error) {
+      return true
     }
-    if (shippingAddress?.errors?.[name] && hasError) setHasError(false)
-
-    return () => {
-      setHasError(false)
-    }
+    return false
   }, [
     value,
     billingAddress?.errors,
@@ -77,7 +93,7 @@ export function AddressCountrySelector(props: Props): JSX.Element {
         customerAddress?.validation
       }
       required={required}
-      options={getCountries()}
+      options={getCountries(countries)}
       name={name}
       value={value}
       {...p}

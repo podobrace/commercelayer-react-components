@@ -3,15 +3,15 @@ import Parent from '#components/utils/Parent'
 import { type ChildrenFunction } from '#typings/index'
 import AddressContext from '#context/AddressContext'
 import {
-  shippingAddressController,
   countryLockController,
-  billingAddressController
+  addressesController
 } from '#utils/addressesManager'
 import OrderContext from '#context/OrderContext'
 import CustomerContext from '#context/CustomerContext'
 import isFunction from 'lodash/isFunction'
 import { type TCustomerAddress } from '#reducers/CustomerReducer'
 import type { Order } from '@commercelayer/sdk'
+import { validateValue } from '#utils/validateFormFields'
 
 interface TOnClick {
   success: boolean
@@ -26,6 +26,7 @@ interface Props
   label?: string | ReactNode
   onClick?: (params: TOnClick) => void
   addressId?: string
+  requiredMetadataFields?: string[]
 }
 
 export function SaveAddressesButton(props: Props): JSX.Element {
@@ -35,6 +36,7 @@ export function SaveAddressesButton(props: Props): JSX.Element {
     resource,
     disabled = false,
     addressId,
+    requiredMetadataFields,
     onClick,
     ...p
   } = props
@@ -45,7 +47,8 @@ export function SaveAddressesButton(props: Props): JSX.Element {
     shipping_address: shippingAddress,
     saveAddresses,
     billingAddressId,
-    shippingAddressId
+    shippingAddressId,
+    invertAddresses
   } = useContext(AddressContext)
   const { order } = useContext(OrderContext)
   const {
@@ -60,20 +63,35 @@ export function SaveAddressesButton(props: Props): JSX.Element {
     !order?.customer_email
   )
   if (email != null && email !== '') {
-    customerEmail = false
+    const isValidEmail = validateValue(
+      email,
+      'customer_email',
+      'email',
+      'orders'
+    )
+    customerEmail = Object.keys(isValidEmail).length > 0
   }
-  const billingDisable = billingAddressController({
+
+  const shippingAddressCleaned: any = Object.keys(shippingAddress ?? {}).reduce(
+    (acc, key) => {
+      return {
+        ...acc,
+        // @ts-expect-error type mismatch
+        [key.replace(`shipping_address_`, '')]: shippingAddress[key].value
+      }
+    },
+    {}
+  )
+  const { billingDisable, shippingDisable } = addressesController({
+    invertAddresses,
+    requiresBillingInfo: order?.requires_billing_info,
     billing_address: billingAddress,
-    errors,
-    billingAddressId,
-    requiresBillingInfo: order?.requires_billing_info
-  })
-  const shippingDisable = shippingAddressController({
-    billingDisable,
-    errors,
+    shipping_address: shippingAddressCleaned,
     shipToDifferentAddress,
-    shipping_address: shippingAddress,
-    shippingAddressId
+    shippingAddressId,
+    billingAddressId,
+    errors,
+    requiredMetadataFields
   })
   const countryLockDisable = countryLockController({
     countryCodeLock: order?.shipping_country_code_lock,
@@ -82,7 +100,8 @@ export function SaveAddressesButton(props: Props): JSX.Element {
     billingAddressId,
     billing_address: billingAddress,
     shipping_address: shippingAddress,
-    shippingAddressId
+    shippingAddressId,
+    lineItems: order?.line_items
   })
   const disable =
     disabled ||

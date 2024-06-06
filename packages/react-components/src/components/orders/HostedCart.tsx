@@ -14,6 +14,7 @@ import {
 import { iframeResizer } from 'iframe-resizer'
 import type { Order } from '@commercelayer/sdk'
 import { subscribe, unsubscribe } from '#utils/events'
+import { getOrganizationConfig } from '#utils/organization'
 
 interface IframeData {
   message:
@@ -41,7 +42,9 @@ const defaultIframeStyle = {
   width: '1px',
   minWidth: '100%',
   minHeight: '100%',
-  border: 'none'
+  border: 'none',
+  paddingLeft: '20px',
+  paddingRight: '20px'
 } satisfies CSSProperties
 
 const defaultContainerStyle = {
@@ -51,7 +54,8 @@ const defaultContainerStyle = {
   height: '100%',
   width: '23rem',
   transition: 'right 0.5s ease-in-out',
-  zIndex: '0',
+  // zIndex: '0',
+  pointerEvents: 'none',
   overflow: 'auto'
 } satisfies CSSProperties
 
@@ -63,7 +67,8 @@ const defaultBackgroundStyle = {
   height: '100%',
   width: '100vw',
   transition: 'opacity 0.5s ease-in-out',
-  zIndex: '-10',
+  // zIndex: '-10',
+  pointerEvents: 'none',
   backgroundColor: 'black'
 } satisfies CSSProperties
 
@@ -91,31 +96,53 @@ const defaultStyle = {
 interface Props
   extends Omit<JSX.IntrinsicElements['div'], 'children' | 'style'> {
   /**
+   * The style of the cart.
+   */
+  style?: Styles
+  /**
+   * The domain of your forked application.
+   */
+  customDomain?: string
+  /**
    * The type of the cart. Defaults to undefined.
    */
   type?: 'mini'
   /**
    * If true, the cart will open when a line item is added to the order clicking the add to cart button. Defaults to false.
+   * Works only with the `type` prop set to `mini`.
    */
   openAdd?: boolean
   /**
-   * The style of the cart.
-   */
-  style?: Styles
-  /**
    * If true, the cart will be open. Defaults to false.
+   * Works only with the `type` prop set to `mini`.
    */
   open?: boolean
   /**
    * A function that will be called when the cart is open and the background is clicked.
+   * Works only with the `type` prop set to `mini`.
    */
   handleOpen?: () => void
-  /**
-   * The domain of your forked application.
-   */
-  customDomain?: string
 }
 
+/**
+ * This component allows to embed the cart application in your page as an `<iframe>`.
+ *
+ * By default, it will be rendered as inline cart and its content will fit the available container width
+ * while the height will be automatically adjusted to the content.
+ *
+ * Or it can work as mini cart - when `type` prop is set to `mini` - and it will be opened in a modal (popup).
+ *
+ * <span title="Requirement" type="warning">
+ * Must be a child of the `<OrderContainer>` component.
+ * </span>
+ *
+ * <span title="Mini cart" type="info">
+ * When set as `mini` cart, it requires the `<CartLink type='mini' />` component to be on the same page,
+ * to show the cart when clicked. <br />
+ * View the `<CartLink />` component documentation for more details and examples.
+ * </span>
+ *
+ */
 export function HostedCart({
   type,
   openAdd = false,
@@ -135,21 +162,30 @@ export function HostedCart({
   })
   const [src, setSrc] = useState<string | undefined>()
   if (accessToken == null || endpoint == null) return null
-  const { order, createOrder } = useContext(OrderContext)
+  const { order, createOrder, getOrder } = useContext(OrderContext)
   const { persistKey } = useContext(OrderStorageContext)
   const { domain, slug } = getDomain(endpoint)
   async function setOrder(openCart?: boolean): Promise<void> {
     const orderId = localStorage.getItem(persistKey) ?? (await createOrder({}))
-    if (orderId != null && accessToken) {
+    if (orderId != null && accessToken && endpoint) {
+      const config = await getOrganizationConfig({
+        accessToken,
+        endpoint,
+        params: {
+          orderId: order?.id,
+          accessToken
+        }
+      })
       setSrc(
-        getApplicationLink({
-          slug,
-          orderId,
-          accessToken,
-          domain,
-          applicationType: 'cart',
-          customDomain
-        })
+        config?.links?.cart ??
+          getApplicationLink({
+            slug,
+            orderId,
+            accessToken,
+            domain,
+            applicationType: 'cart',
+            customDomain
+          })
       )
       if (openCart) {
         setTimeout(() => {
@@ -162,6 +198,9 @@ export function HostedCart({
   function onMessage(data: IframeData): void {
     switch (data.message.type) {
       case 'update':
+        if (data.message.payload != null) {
+          void getOrder(data.message.payload.id)
+        }
         break
       case 'close':
         if (type === 'mini') {
@@ -213,15 +252,25 @@ export function HostedCart({
       (order?.id != null || orderId != null) &&
       accessToken
     ) {
-      setSrc(
-        getApplicationLink({
-          slug,
-          orderId: (order?.id ?? orderId) as string,
-          accessToken,
-          domain,
-          applicationType: 'cart'
-        })
-      )
+      void getOrganizationConfig({
+        accessToken,
+        endpoint,
+        params: {
+          orderId: order?.id,
+          accessToken
+        }
+      }).then((config) => {
+        setSrc(
+          config?.links?.cart ??
+            getApplicationLink({
+              slug,
+              orderId: order?.id ?? orderId ?? '',
+              accessToken,
+              domain,
+              applicationType: 'cart'
+            })
+        )
+      })
     }
     if (src != null && ref.current != null) {
       ref.current.src = src
@@ -238,7 +287,6 @@ export function HostedCart({
     iframeResizer(
       {
         checkOrigin: false,
-        bodyPadding: '20px',
         // @ts-expect-error No types available
         onMessage
       },
@@ -256,11 +304,14 @@ export function HostedCart({
   return src == null ? null : type === 'mini' ? (
     <>
       <div
+        aria-hidden='true'
         style={{
           ...defaultStyle.background,
           ...style?.background,
           opacity: isOpen ? '0.5' : defaultStyle.background?.opacity,
-          zIndex: isOpen ? '1' : defaultStyle.background?.zIndex
+          pointerEvents: isOpen
+            ? 'initial'
+            : defaultStyle.background?.pointerEvents
         }}
         onClick={onCloseCart}
       />
@@ -269,7 +320,9 @@ export function HostedCart({
           ...defaultStyle.container,
           ...style?.container,
           right: isOpen ? '0' : defaultStyle.container?.right,
-          zIndex: isOpen ? '100' : defaultStyle.container?.zIndex
+          pointerEvents: isOpen
+            ? 'initial'
+            : defaultStyle.container?.pointerEvents
         }}
         {...props}
       >

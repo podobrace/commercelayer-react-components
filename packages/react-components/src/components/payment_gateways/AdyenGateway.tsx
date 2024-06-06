@@ -11,7 +11,7 @@ import isEmpty from 'lodash/isEmpty'
 import { useContext } from 'react'
 import AdyenPayment from '#components/payment_source/AdyenPayment'
 import PaymentCardsTemplate from '../utils/PaymentCardsTemplate'
-import jwt from '#utils/jwt'
+import { jwt } from '#utils/jwt'
 import getCardDetails from '#utils/getCardDetails'
 import { getPaymentAttributes } from '#utils/getPaymentAttributes'
 
@@ -37,8 +37,6 @@ export function AdyenGateway(props: Props): JSX.Element | null {
     useContext(PaymentMethodContext)
   const paymentResource: PaymentResource = 'adyen_payments'
   const locale = order?.language_code as StripeElementLocale
-  // @ts-expect-error no type
-  const paymentMethods = paymentSource?.payment_methods
   if (!readonly && payment?.id !== currentPaymentMethodId) return null
   // @ts-expect-error no type
   const clientKey = paymentSource?.public_key
@@ -52,10 +50,12 @@ export function AdyenGateway(props: Props): JSX.Element | null {
   const customerPayments =
     !isEmpty(payments) && payments
       ? payments.filter((customerPayment) => {
-          return customerPayment.payment_source?.type === 'adyen_payments'
+          return (
+            customerPayment.payment_source?.type === 'adyen_payments' ||
+            customerPayment.payment_method != null
+          )
         })
       : []
-
   if (readonly || showCard) {
     const card = getCardDetails({
       customerPayment: {
@@ -71,9 +71,8 @@ export function AdyenGateway(props: Props): JSX.Element | null {
       </PaymentSourceContext.Provider>
     )
   }
-
   if (!isGuest && templateCustomerCards) {
-    return clientKey && !loading && paymentMethods ? (
+    return (
       <>
         {isEmpty(customerPayments) ? null : (
           <div className={p.className}>
@@ -90,19 +89,15 @@ export function AdyenGateway(props: Props): JSX.Element | null {
           config={paymentConfig}
         />
       </>
-    ) : (
-      loaderComponent
     )
   }
-  return clientKey && !loading && paymentMethods ? (
+  return (
     <AdyenPayment
       clientKey={clientKey}
       locale={locale}
       config={paymentConfig}
       environment={environment}
     />
-  ) : (
-    loaderComponent
   )
 }
 

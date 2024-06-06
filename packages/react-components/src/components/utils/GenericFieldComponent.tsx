@@ -16,7 +16,7 @@ import { type InitialParcelContext } from '#context/ParcelChildrenContext'
 import { type InitialParcelLineItemContext } from '#context/ParcelLineItemChildrenContext'
 
 export interface TResources {
-  StockTransfer: LineItem & { resource: 'stock_transfers' }
+  StockTransfer: LineItem & { resource: 'stockTransfer' }
   Sku: Sku & { resource: 'sku' }
   LineItem: LineItem & { resource: 'lineItem' }
   Customer: Customer & { resource: 'customers' }
@@ -39,7 +39,7 @@ export type TGenericChildrenProps<E extends TResources[keyof TResources]> =
   }
 
 interface ResourceContext {
-  stock_transfers: InitialStockTransferContext
+  stockTransfer: InitialStockTransferContext
   sku: InitialSkuContext
   lineItem: InitialLineItemChildrenContext
   customers: InitialCustomerContext
@@ -54,7 +54,13 @@ type GenericContext<K extends keyof ResourceContext> = Context<
 interface Props<E extends TResources[keyof TResources]> {
   children?: (props: TGenericChildrenProps<E>) => JSX.Element
   resource: E['resource']
+  /**
+   * Resource attribute to display.
+   */
   attribute: keyof E
+  /**
+   * Html tag to render. When tag is `img` the value will be used to fill the `src` attribute.
+   */
   tagElement: keyof JSX.IntrinsicElements
   context: GenericContext<E['resource']>
 }

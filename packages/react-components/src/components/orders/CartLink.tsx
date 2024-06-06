@@ -6,6 +6,7 @@ import CommerceLayerContext from '#context/CommerceLayerContext'
 import { getApplicationLink } from '#utils/getApplicationLink'
 import { getDomain } from '#utils/getDomain'
 import { publish } from '#utils/events'
+import { getOrganizationConfig } from '#utils/organization'
 
 interface ChildrenProps extends Omit<Props, 'children'> {
   /**
@@ -44,6 +45,14 @@ interface Props extends Omit<JSX.IntrinsicElements['a'], 'children'> {
   customDomain?: string
 }
 
+/**
+ * This component generates a link to the hosted mfe-cart application.
+ * In this way you can connect your shop application with our hosted micro-frontend.
+ *
+ * <span title="Requirement" type="warning">
+ * Must be a child of the `<OrderContainer>` component. <br />
+ * </span>
+ */
 export function CartLink(props: Props): JSX.Element | null {
   const { label, children, type, customDomain, ...p } = props
   const { order, createOrder } = useContext(OrderContext)
@@ -63,25 +72,44 @@ export function CartLink(props: Props): JSX.Element | null {
           applicationType: 'cart',
           customDomain
         })
-      : ''
+      : undefined
   const handleClick = async (
     event: MouseEvent<HTMLAnchorElement>
   ): Promise<void> => {
     event.preventDefault()
     if (type !== 'mini') {
       if (order?.id) {
-        location.href = href
+        const config = await getOrganizationConfig({
+          accessToken,
+          endpoint,
+          params: {
+            orderId: order?.id,
+            accessToken
+          }
+        })
+        location.href = config?.links?.cart ?? href ?? ''
       } else {
         const orderId = await createOrder({})
-        if (slug)
-          location.href = getApplicationLink({
-            slug,
-            orderId,
-            accessToken,
-            domain,
-            applicationType: 'cart',
-            customDomain
-          })
+        const config = await getOrganizationConfig({
+          accessToken,
+          endpoint,
+          params: {
+            orderId: order?.id,
+            accessToken
+          }
+        })
+        if (slug) {
+          location.href =
+            config?.links?.cart ??
+            getApplicationLink({
+              slug,
+              orderId,
+              accessToken,
+              domain,
+              applicationType: 'cart',
+              customDomain
+            })
+        }
       }
     } else {
       publish('open-cart')
@@ -101,10 +129,10 @@ export function CartLink(props: Props): JSX.Element | null {
   ) : (
     <a
       href={href}
-      {...p}
       onClick={(e) => {
         void handleClick(e)
       }}
+      {...p}
     >
       {label}
     </a>

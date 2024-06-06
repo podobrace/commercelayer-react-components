@@ -20,6 +20,7 @@ import {
   getStripeAttributes
 } from '#utils/getPaymentAttributes'
 import ExternalGateway from './ExternalGateway'
+import PlaceOrderContext from '#context/PlaceOrderContext'
 import MultisafepayGateway from './MultisafepayGateway'
 
 export type GatewayBaseType = Props & {
@@ -52,6 +53,7 @@ export function PaymentGateway({
   const { payment, expressPayments } = useContext(PaymentMethodChildrenContext)
   const { order } = useContext(OrderContext)
   const { getCustomerPaymentSources } = useContext(CustomerContext)
+  const { status } = useContext(PlaceOrderContext)
   const {
     currentPaymentMethodId,
     config,
@@ -83,11 +85,13 @@ export function PaymentGateway({
         }
       }
       const setPaymentSources = async (): Promise<void> => {
-        await setPaymentSource({
-          paymentResource,
-          order,
-          attributes
-        })
+        if (order != null) {
+          await setPaymentSource({
+            paymentResource,
+            order,
+            attributes
+          })
+        }
         if (getCustomerPaymentSources) getCustomerPaymentSources()
       }
       if (
@@ -108,13 +112,27 @@ export function PaymentGateway({
       if (paymentSource?.mismatched_amounts && show) {
         void setPaymentSources()
       }
+      if (order?.payment_source?.id != null) {
+        setLoading(false)
+      }
+    }
+    if (expressPayments && show) setLoading(false)
+    if (
+      order?.status != null &&
+      !['draft', 'pending'].includes(order?.status) &&
+      show &&
+      order?.payment_source?.id != null
+    ) {
       setLoading(false)
     }
-    if (expressPayments) setLoading(false)
     return () => {
       setLoading(true)
     }
   }, [order?.payment_method?.id, show, paymentSource])
+  useEffect(() => {
+    if (status === 'placing' && !loading) setLoading(true)
+  }, [status])
+
   const gatewayConfig = {
     readonly,
     showCard,
@@ -128,6 +146,8 @@ export function PaymentGateway({
     templateCustomerSaveToWallet,
     ...p
   }
+  if (currentPaymentMethodType !== paymentResource) return null
+  if (loading) return loaderComponent
   switch (paymentResource) {
     case 'adyen_payments':
       return <AdyenGateway {...gatewayConfig}>{children}</AdyenGateway>

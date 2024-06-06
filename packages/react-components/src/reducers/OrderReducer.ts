@@ -20,8 +20,9 @@ import type {
   OrderUpdate,
   QueryParamsRetrieve
 } from '@commercelayer/sdk'
-import getOrganizationSlug from '#utils/organization'
+import { getOrganizationSlug } from '#utils/organization'
 import { type LooseAutocomplete } from '#typings/globals'
+import { publish } from '#utils/events'
 
 export type GetOrderParams = Partial<{
   clearWhenPlaced: boolean
@@ -69,6 +70,7 @@ export type ResourceIncluded =
   | 'line_items.line_item_options.sku_option'
   | 'line_items.item'
   | 'available_customer_payment_sources.payment_source'
+  | 'available_customer_payment_sources.payment_method'
   | 'shipments.available_shipping_methods'
   | 'shipments.stock_transfers'
   | 'shipments.stock_transfers.line_item'
@@ -142,8 +144,9 @@ export async function createOrder(params: CreateOrderParams): Promise<string> {
       setLocalOrder
     } = params
     if (state?.orderId) return state.orderId
-    const sdk = getSdk(config as CommerceLayerConfig)
+    const sdk = config != null ? getSdk(config) : undefined
     try {
+      if (sdk == null) return ''
       const o = await sdk?.orders.create({ metadata, ...orderAttributes })
       if (dispatch) {
         dispatch({
@@ -184,13 +187,14 @@ export const getApiOrder: GetOrder = async (
     deleteLocalOrder,
     state
   } = params
-  const sdk = getSdk(config as CommerceLayerConfig)
+  const sdk = config != null ? getSdk(config) : undefined
   try {
+    if (sdk == null) return undefined
     const options: QueryParamsRetrieve = {}
     if (state?.include && state.include.length > 0) {
       options.include = state.include
     }
-    const order = await sdk.orders.retrieve(id as string, options)
+    const order = await sdk.orders.retrieve(id ?? '', options)
     if (clearWhenPlaced && order.editable === false) {
       persistKey && deleteLocalOrder && deleteLocalOrder(persistKey)
       if (dispatch) {
@@ -251,8 +255,9 @@ export async function updateOrder({
   error?: unknown
   order?: Order
 }> {
-  const sdk = getSdk(config as CommerceLayerConfig)
+  const sdk = config != null ? getSdk(config) : undefined
   try {
+    if (sdk == null) return { success: false }
     const resource = { ...attributes, id }
     // const order = await sdk.orders.update(resource, { include })
     await sdk.orders.update(resource, { include })
@@ -397,6 +402,7 @@ export type AddToCartParams = Partial<{
   setLocalOrder: SetLocalOrder
   buyNowMode: boolean
   checkoutUrl: string
+  openMiniCart: boolean
 }>
 
 export async function addToCart(
@@ -413,7 +419,8 @@ export async function addToCart(
     errors = [],
     buyNowMode,
     checkoutUrl,
-    lineItemOption
+    lineItemOption,
+    openMiniCart = true
   } = params
   try {
     if (config) {
@@ -422,7 +429,7 @@ export async function addToCart(
       if (id) {
         const order = sdk.orders.relationship(id)
         const name = lineItem?.name
-        const imageUrl = lineItem?.imageUrl as string
+        const imageUrl = lineItem?.imageUrl
         const metadata = lineItem?.metadata
         const frequency = lineItem?.frequency
         const externalPrice = lineItem?.externalPrice
@@ -492,6 +499,8 @@ export async function addToCart(
             ? `${checkoutUrl}/${params}`
             : `https://${organization}.checkout.commercelayer.app/${params}`
           location.href = redirectUrl
+        } else if (openMiniCart) {
+          publish('open-cart')
         }
         return { success: true, orderId: id }
       }
@@ -625,7 +634,7 @@ export async function setGiftCardOrCouponCode({
   }
 }
 
-export type CodeType = 'coupon' | 'gift_card' | 'gift_card_or_coupon'
+export type CodeType = 'coupon' | 'gift_card'
 export type OrderCodeType = `${CodeType}_code`
 
 interface TRemoveGiftCardOrCouponCodeParams {

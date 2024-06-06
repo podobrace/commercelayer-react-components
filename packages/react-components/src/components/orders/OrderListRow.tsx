@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { type ReactNode, useContext } from 'react'
 import Parent from '#components/utils/Parent'
 import OrderListChildrenContext, {
   type TOrderList,
@@ -67,17 +67,22 @@ export function OrderListRow({ field, children, ...p }: Props): JSX.Element {
     cell
   }
   return children ? (
-    <As>
-      <Parent {...parentProps}>{children}</Parent>
+    <>
+      <As>
+        <Parent {...parentProps}>{children}</Parent>
+      </As>
       <ActionRow />
-    </As>
+    </>
   ) : (
     <>
       {cell?.map((cell, k) => {
         const cellValue = cell.getValue<string>()
         const value = isDate(cellValue)
           ? new Date(Date.parse(cellValue)).toLocaleString()
-          : flexRender(cell.column.columnDef.cell, cell.getContext())
+          : (flexRender(
+              cell.column.columnDef.cell,
+              cell.getContext()
+            ) as ReactNode)
         return (
           <As data-testid={`cell-${k}`} {...p} key={cell.id}>
             {value}
