@@ -14,6 +14,7 @@
     "docs:build": "pnpm --filter docs build-storybook",
     "components:build:dev": "pnpm --filter \"@podobrace/commercelayer-react-components\" build:dev",
     "components:build": "pnpm --filter \"@podobrace/commercelayer-react-components\" build",
+    "components:publish": "pnpm --filter \"@podobrace/commercelayer-react-components\" publish",
     "make:version": "lerna version --no-private",
     "make:version:force": "lerna version --no-private --force-publish"
   },
