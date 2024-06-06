@@ -20,7 +20,7 @@ export function PaymentMethodName(props: Props): JSX.Element {
     key: 'payment'
   })
   let labelName = payment?.name
-  let htmlFor = payment?.payment_source_type
+  let htmlFor: string | undefined = payment?.payment_source_type
   const imagePath: string | undefined = payment?.metadata?.['image_path']
   const paymentGateway = payment?.payment_gateway
 
