@@ -94,11 +94,11 @@ export function fieldsExist(
   schema: Array<AddressField | string> = addressFields
 ): boolean {
   if (!address.business) {
-    const required = without(schema, 'line_2', 'company')
+    const required = without(schema, 'line_2', 'company', '')
     const validAddress = keys(address).filter((k) => required.includes(k))
     return required.length > validAddress.length
   } else {
-    const required = without(schema, 'first_name', 'last_name', 'line_2')
+    const required = without(schema, 'first_name', 'last_name', 'line_2', '')
     const validAddress = keys(address).filter((k) => required.includes(k))
     return required.length > validAddress.length
   }
@@ -109,8 +109,10 @@ type CustomerOptionalField =
       AddressInputName,
       | 'billing_address_line_2'
       | 'billing_address_company'
+      | 'billing_address_state_code'
       | 'shipping_address_line_2'
       | 'shipping_address_company'
+      | 'shipping_address_state_code'
     >
   | 'company'
   | 'line_2'
@@ -120,8 +122,10 @@ type BusinessOptionalField =
       AddressInputName,
       | 'billing_address_first_name'
       | 'billing_address_last_name'
+      | 'billing_address_state_code'
       | 'shipping_address_first_name'
       | 'shipping_address_last_name'
+      | 'shipping_address_state_code'
     >
   | 'first_name'
   | 'last_name'
@@ -129,15 +133,19 @@ type BusinessOptionalField =
 const businessOptionalFields: BusinessOptionalField[] = [
   'billing_address_first_name',
   'billing_address_last_name',
+  'billing_address_state_code',
   'shipping_address_first_name',
   'shipping_address_last_name',
+  'shipping_address_state_code',
   'first_name',
   'last_name'
 ]
 
 const customerOptionalFields: CustomerOptionalField[] = [
   'billing_address_company',
+  'billing_address_state_code',
   'shipping_address_company',
+  'shipping_address_state_code',
   'company'
 ]
 
